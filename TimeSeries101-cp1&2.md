@@ -345,6 +345,42 @@ plt.legend()
 
 ##### 2.4.3 平滑数据
 
+数据平滑也是一个常用的数据清洗的技巧，为了能讲述一个更能被理解的故事，在数据分析前常常会进行平滑处理。数据平滑通常是为了消除一些极端值或测量误差。即使有些极端值本身是真实的，但是并没有反应出潜在的数据模式，我们也会把它平滑掉。
+
+在讲述数据平滑的概念时，需要引入下图层层递进。
+
+![image](img/2_4.png)
+
+weighted averaging，也就是上文曾经讲过的moving average，也是一种最简单的平滑技术，即可以给予数据点相同的权重，也可以给越邻近的数据点更高的权重。
+
+exponential smoothing，本质上和weighted averaging类似，都是给越邻近的数据点更高的权重，区别在于衰减的方式不同，指数平滑法顾名思义，从最邻近到最早的数据点的权重呈现指数型下降的规律，weighted averaging需要为每一个权重指定一个确定值。指数平滑法在很多场景下效果都很好，但它也有一个明显的缺点，无法适用于呈现趋势变化或季节性变化的数据。
+
+t时刻的指数平滑后的值可以用以下公式表示，
+$$
+S_t = \alpha * x_{t} + (1 – \alpha) * S_{t-1}
+$$
+Holt Exponential Smoothing，这种技术通过引入一个额外的系数，解决了指数平滑无法应用于具有趋势特点数据的不足，但但是依然无法解决具有季节性变化数据的平滑问题。
+
+Holt-Winters Exponential Smoothing，这种技术通过再次引入一个新系数的方式同时解决了Holt Exponential Smoothing无法解决具有季节性变化数据的不足。简单来说，它是在指数平滑只有一个平滑系数的基础上，额外引入了趋势系数和季节系数来实现的。这种技术在时间序列的预测上（例如未来销售数据预测）有着很广泛的应用。
+
+**Python实现指数平滑**
+
+```python
+# 导入航空乘客数据
+air = pd.read_csv('data\\air.csv')
+# 设置两种平滑系数
+air['smooth_0.5']= air.Passengers.ewm(alpha =0.5).mean()
+air['smooth_0.9']= air.Passengers.ewm(alpha =0.9).mean()
+# 可视化展现
+plt.plot(air.Date,air.Passengers,label='actual')
+plt.plot(air.Date,air['smooth_0.5'],label='alpha=0.5')
+plt.plot(air.Date,air['smooth_0.9'],label='alpha=0.9')
+plt.xticks(rotation=45)
+plt.legend()
+```
+
+![image](img/2_5.png)
+
 
 
 
