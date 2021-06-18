@@ -618,6 +618,76 @@ plt.show()
 
 ##### 3.2.1 1D可视化
 
+一种常用的一维可视化形式是甘特图，在项目管理中较为常见，下面的这个可视化例子是展示了不同任务在时间轴上的起始分布和工作量。
 
+```python
+job = pd.read_csv('data/job.csv')
+job.start = job.start.astype('datetime64')
+job.finish = job.finish.astype('datetime64')
+```
+
+
+```python
+px.timeline(job,x_start='start',x_end='finish',y='task',color='task',text='loading')
+```
+
+![image-20210618151048526](img/3_9_0.png)
 
 ##### 3.2.2 2D可视化
+
+二维可视化可以展现更多信息，下面就以美国航空乘客数据来展示常用的可视化图表。
+
+
+```python
+air = pd.read_csv('data/AirPassengers.csv',parse_dates=['date'])
+```
+
+
+```python
+air['year'] = air['date'].dt.year
+air['month']=air['date'].dt.month
+```
+
+对于时间序列数据，折线图很自然是最适合的表现形式之一，以年份为分类变量，可以展示在一年中的各个月份下航空乘客的变化关系，发现无论在哪一年，几乎都呈现夏季航空出行量最高的规律。
+
+
+```python
+palette = sns.color_palette('hls',12)
+fig=sns.lineplot(x='month',y='value',data=air,hue='year',palette=palette)
+fig.set_xticks(range(1,13))
+fig.set_xticklabels(["Jan", "Feb", "Mar", "Apr","May", "Jun", "Jul", "Aug","Sep", "Oct", "Nov", "Dec"])
+plt.show()
+```
+
+
+![png](img/3_10.png)
+    
+
+如果换一种方式绘制折线图，以月份为分类变量，年份为X轴，可以看出1949-1960这十多年间是航空业大发展的时期，整体的航空出行量都在显著增加。
+
+```python
+fig=sns.lineplot(x='year',y='value',data=air,hue='month',palette=palette)
+plt.show()
+```
+
+
+![png](img/3_11.png)
+    
+
+还有一种常见的二维可视化方式是热力图，将原始数据拆成年和月两个维度，同样可以清楚直观地看出航空出行在时间维度上的规律。
+
+```python
+air_mat= air.pivot(index='year', columns='month',values='value')
+```
+
+
+```python
+sns.heatmap(data=air_mat,annot=True,fmt='d',linewidths=0.5)
+plt.show()
+```
+
+
+![png](img\3_12.png)
+    
+
+##### 
