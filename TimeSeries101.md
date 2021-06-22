@@ -690,4 +690,27 @@ plt.show()
 ![png](img\3_12.png)
     
 
-##### 
+### 4. 基于统计学的时间序列分析方法
+
+本章将正式开始时间序列分析方法的内容，我们会先从统计学方法开始讲起，这类方法最为传统，在学术研究和工业模型等领域都已经有了十分广泛的应用。这类方法和线性回归有一定类似，会用到线性回归来解释不同时间下数据点之间的关系。和一般线性回归的区别是一般线性回归分析假定不同数据点之间是独立的，而时间序列数据分析的一个重要前提是各个数据点之间存在关联。
+
+#### 4.1 自回归模型（Autoregressive)
+
+自回归模型基于的基础是可以用历史预测未来，也就是时刻t的数据能用之前时刻的函数来表示。
+
+自回归模型是很多人在拟合时间序列数据时最先尝试的模型，尤其是在对该数据没有额外的了解时。它的基本公式可以用以下公式表示，
+$$
+y_t = b_0 + b_1 × y_{t -1} + e_t
+$$
+
+
+这个最简单的模型称为AR(1)，其中括号中的1表示时间间隔为1，也就是当前时刻的数据值的计算只考虑到前一个时刻的值。从公式可以看出，它和常规的线性回归十分类似，
+The simplest AR model, an AR(1) model, describes a system as follows:
+yt = b0 + b1 × yt -1 + et
+The value of the series at time t is a function of a constant b0, its value at the previous
+time step multiplied by another constant b1 × yt -1 and an error term that also varies
+with time et. This error term is assumed to have a constant variance and a mean of 0.
+
+
+
+
