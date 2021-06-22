@@ -700,17 +700,298 @@ plt.show()
 
 自回归模型是很多人在拟合时间序列数据时最先尝试的模型，尤其是在对该数据没有额外的了解时。它的基本公式可以用以下公式表示，
 $$
-y_t = b_0 + b_1 × y_{t -1} + e_t
+y_t = b_0 + b_1 * y_{t -1} + e_t
 $$
 
+这个最简单的模型称为AR(1)，其中括号中的1表示时间间隔为1，也就是当前时刻的数据值的计算只考虑到前一个时刻的值。从公式可以看出，它和常规的线性回归十分类似，$ b_0,b_1 $分别代表截距项和回归系数，$ e_t$表示t时刻的错误项，其中错误项均值为0，具有固定方差。这个公式表示的是用t-1时刻的时间序列值来拟合t时刻的时间序列值。
 
-这个最简单的模型称为AR(1)，其中括号中的1表示时间间隔为1，也就是当前时刻的数据值的计算只考虑到前一个时刻的值。从公式可以看出，它和常规的线性回归十分类似，
-The simplest AR model, an AR(1) model, describes a system as follows:
-yt = b0 + b1 × yt -1 + et
-The value of the series at time t is a function of a constant b0, its value at the previous
-time step multiplied by another constant b1 × yt -1 and an error term that also varies
-with time et. This error term is assumed to have a constant variance and a mean of 0.
-
-
+AR模型可以扩展到p个近邻时间值，此时称为AR(p)。
+$$
+y_t = \phi_0 + \phi_1 * y_{t -1} + \phi_2 * y_{t -2} + ... + \phi_p * y_{t - p} + e_t
+$$
+其中$\phi$表示一系列回归系数。
 
 
+
+**python实战演练**
+
+在实战中我们应当注意使用AR模型的两个前提假定：
+
+- 过去发生的数据能够用来预测未来的数据（也就是数据之间是非独立的）
+- 时间序列数据时平稳的
+
+如果数据集是不平稳的，需要使用一些操作将数据去除趋势项和季节项使其变得平稳。
+
+*冷知识：平稳性非为强平稳性和弱平稳性，其中强平稳性要求数据的分布不随时间变化，而弱平稳性仅仅要求数据的一阶距和二阶矩（均值和方差）不随时间变化。*
+
+```python
+import matplotlib.pyplot as plt
+import pandas as pd
+from statsmodels.tsa.ar_model import AutoReg
+from statsmodels.tsa.seasonal import seasonal_decompose
+%matplotlib inline
+```
+
+
+```python
+# 导入销售数据，绘制原始图像
+sales_data = pd.read_csv('data/retail_sales.csv')
+sales_data['date']=pd.to_datetime(sales_data['date'])
+sales_data.set_index('date', inplace=True)
+sales_data.plot()
+```
+
+
+![png](img\4_1.png)
+    
+
+
+我们提到使用AR模型的两个前提假设，相关性和平稳性。
+因此先来检验相关性。
+
+检验相关性有两种方法
+- pandas提供了autocorrelation_plot方法用于检验整体自相关性
+- 使用pandas的lag_plot方法检查单个时间间隔的相关性
+
+
+```python
+pd.plotting.autocorrelation_plot(sales_data['sales']) 
+# 从自相关性图中可以看到在lag<=12时，acf值在临界点以外，表现出极强的相关性。
+```
+
+
+![png](img\4_2.png)
+    
+
+```python
+# 将上图中相关性最强的lag=12单独画散点图，观察相关性
+pd.plotting.lag_plot(sales_data['sales'],lag=12)
+```
+
+
+![png](img\4_3.png)
+    
+
+
+第二步检查平稳性，一个最快捷的方法之一是使用statsmodels中的seasonal_decompose方法进行趋势项和季节项的分解。
+
+
+```python
+# 数据集存在明显趋势项（图二单调递增）和季节项（图三周期性变化）
+decomposed = seasonal_decompose(sales_data['sales'], model='additive')
+x = decomposed.plot()
+```
+
+
+![png](img\4_4.png)
+    
+
+
+幸好statsmodel包的AutoReg方法增加了对趋势和季节项特征的处理，直接使用该方法即可
+
+
+```python
+# 划分训练集合测试集
+X = sales_data['sales']
+train_data = X[1:len(X)-12]
+test_data = X[len(X)-12:]  #以最后十二个点作为待预测值
+
+# 训练AR模型
+model = AutoReg(train_data,lags=15,missing='drop',trend='t',seasonal=True) 
+model_fitted = model.fit()
+```
+
+
+
+```python
+# 查看模型结果
+model_fitted.summary()
+```
+
+
+
+
+<table class="simpletable">
+<caption>AutoReg Model Results</caption>
+<tr>
+  <th>Dep. Variable:</th>       <td>sales</td>       <th>  No. Observations:  </th>    <td>59</td>   
+</tr>
+<tr>
+  <th>Model:</th>         <td>Seas. AutoReg(15)</td> <th>  Log Likelihood     </th> <td>-422.998</td>
+</tr>
+<tr>
+  <th>Method:</th>         <td>Conditional MLE</td>  <th>  S.D. of innovations</th> <td>3621.518</td>
+</tr>
+<tr>
+  <th>Date:</th>          <td>Tue, 22 Jun 2021</td>  <th>  AIC                </th>  <td>17.707</td> 
+</tr>
+<tr>
+  <th>Time:</th>              <td>22:47:53</td>      <th>  BIC                </th>  <td>18.883</td> 
+</tr>
+<tr>
+  <th>Sample:</th>           <td>02-01-2011</td>     <th>  HQIC               </th>  <td>18.144</td> 
+</tr>
+<tr>
+  <th></th>                 <td>- 09-01-2014</td>    <th>                     </th>     <td> </td>   
+</tr>
+</table>
+<table class="simpletable">
+<tr>
+       <td></td>          <th>coef</th>     <th>std err</th>      <th>z</th>      <th>P>|z|</th>  <th>[0.025</th>    <th>0.975]</th>  
+</tr>
+<tr>
+  <th>trend</th>       <td>  839.9681</td> <td>  362.378</td> <td>    2.318</td> <td> 0.020</td> <td>  129.721</td> <td> 1550.216</td>
+</tr>
+<tr>
+  <th>seasonal.0</th>  <td> 2.213e+05</td> <td> 8.34e+04</td> <td>    2.653</td> <td> 0.008</td> <td> 5.78e+04</td> <td> 3.85e+05</td>
+</tr>
+<tr>
+  <th>seasonal.1</th>  <td> 2.808e+05</td> <td> 8.08e+04</td> <td>    3.476</td> <td> 0.001</td> <td> 1.22e+05</td> <td> 4.39e+05</td>
+</tr>
+<tr>
+  <th>seasonal.2</th>  <td> 1.924e+05</td> <td>  8.7e+04</td> <td>    2.212</td> <td> 0.027</td> <td> 2.19e+04</td> <td> 3.63e+05</td>
+</tr>
+<tr>
+  <th>seasonal.3</th>  <td> 1.689e+05</td> <td> 8.69e+04</td> <td>    1.945</td> <td> 0.052</td> <td>-1331.228</td> <td> 3.39e+05</td>
+</tr>
+<tr>
+  <th>seasonal.4</th>  <td> 2.263e+05</td> <td> 8.29e+04</td> <td>    2.728</td> <td> 0.006</td> <td> 6.37e+04</td> <td> 3.89e+05</td>
+</tr>
+<tr>
+  <th>seasonal.5</th>  <td> 2.335e+05</td> <td> 7.98e+04</td> <td>    2.926</td> <td> 0.003</td> <td> 7.71e+04</td> <td>  3.9e+05</td>
+</tr>
+<tr>
+  <th>seasonal.6</th>  <td>  2.09e+05</td> <td> 8.26e+04</td> <td>    2.530</td> <td> 0.011</td> <td> 4.71e+04</td> <td> 3.71e+05</td>
+</tr>
+<tr>
+  <th>seasonal.7</th>  <td> 2.318e+05</td> <td> 8.32e+04</td> <td>    2.785</td> <td> 0.005</td> <td> 6.87e+04</td> <td> 3.95e+05</td>
+</tr>
+<tr>
+  <th>seasonal.8</th>  <td>  2.33e+05</td> <td> 8.41e+04</td> <td>    2.771</td> <td> 0.006</td> <td> 6.82e+04</td> <td> 3.98e+05</td>
+</tr>
+<tr>
+  <th>seasonal.9</th>  <td> 2.224e+05</td> <td>  8.4e+04</td> <td>    2.648</td> <td> 0.008</td> <td> 5.78e+04</td> <td> 3.87e+05</td>
+</tr>
+<tr>
+  <th>seasonal.10</th> <td> 1.901e+05</td> <td> 8.46e+04</td> <td>    2.246</td> <td> 0.025</td> <td> 2.42e+04</td> <td> 3.56e+05</td>
+</tr>
+<tr>
+  <th>seasonal.11</th> <td> 2.123e+05</td> <td> 8.59e+04</td> <td>    2.473</td> <td> 0.013</td> <td>  4.4e+04</td> <td> 3.81e+05</td>
+</tr>
+<tr>
+  <th>sales.L1</th>    <td>    0.2604</td> <td>    0.155</td> <td>    1.685</td> <td> 0.092</td> <td>   -0.042</td> <td>    0.563</td>
+</tr>
+<tr>
+  <th>sales.L2</th>    <td>    0.1237</td> <td>    0.158</td> <td>    0.785</td> <td> 0.433</td> <td>   -0.185</td> <td>    0.433</td>
+</tr>
+<tr>
+  <th>sales.L3</th>    <td>    0.0379</td> <td>    0.150</td> <td>    0.252</td> <td> 0.801</td> <td>   -0.256</td> <td>    0.332</td>
+</tr>
+<tr>
+  <th>sales.L4</th>    <td>   -0.2515</td> <td>    0.149</td> <td>   -1.691</td> <td> 0.091</td> <td>   -0.543</td> <td>    0.040</td>
+</tr>
+<tr>
+  <th>sales.L5</th>    <td>    0.2431</td> <td>    0.163</td> <td>    1.496</td> <td> 0.135</td> <td>   -0.075</td> <td>    0.562</td>
+</tr>
+<tr>
+  <th>sales.L6</th>    <td>   -0.1179</td> <td>    0.163</td> <td>   -0.722</td> <td> 0.470</td> <td>   -0.438</td> <td>    0.202</td>
+</tr>
+<tr>
+  <th>sales.L7</th>    <td>   -0.1311</td> <td>    0.164</td> <td>   -0.799</td> <td> 0.424</td> <td>   -0.453</td> <td>    0.190</td>
+</tr>
+<tr>
+  <th>sales.L8</th>    <td>   -0.0212</td> <td>    0.196</td> <td>   -0.108</td> <td> 0.914</td> <td>   -0.406</td> <td>    0.363</td>
+</tr>
+<tr>
+  <th>sales.L9</th>    <td>    0.2763</td> <td>    0.201</td> <td>    1.374</td> <td> 0.169</td> <td>   -0.118</td> <td>    0.670</td>
+</tr>
+<tr>
+  <th>sales.L10</th>   <td>    0.0443</td> <td>    0.200</td> <td>    0.222</td> <td> 0.825</td> <td>   -0.347</td> <td>    0.436</td>
+</tr>
+<tr>
+  <th>sales.L11</th>   <td>    0.1980</td> <td>    0.203</td> <td>    0.975</td> <td> 0.330</td> <td>   -0.200</td> <td>    0.596</td>
+</tr>
+<tr>
+  <th>sales.L12</th>   <td>    0.1034</td> <td>    0.202</td> <td>    0.512</td> <td> 0.609</td> <td>   -0.292</td> <td>    0.499</td>
+</tr>
+<tr>
+  <th>sales.L13</th>   <td>   -0.4173</td> <td>    0.206</td> <td>   -2.029</td> <td> 0.042</td> <td>   -0.820</td> <td>   -0.014</td>
+</tr>
+<tr>
+  <th>sales.L14</th>   <td>    0.0320</td> <td>    0.192</td> <td>    0.166</td> <td> 0.868</td> <td>   -0.345</td> <td>    0.409</td>
+</tr>
+<tr>
+  <th>sales.L15</th>   <td>    0.0085</td> <td>    0.206</td> <td>    0.041</td> <td> 0.967</td> <td>   -0.396</td> <td>    0.413</td>
+</tr>
+</table>
+<table class="simpletable">
+<caption>Roots</caption>
+<tr>
+    <td></td>    <th>            Real</th>  <th>         Imaginary</th> <th>         Modulus</th>  <th>        Frequency</th>
+</tr>
+<tr>
+  <th>AR.1</th>  <td>          -0.9178</td> <td>          -0.4910j</td> <td>           1.0409</td> <td>          -0.4218</td>
+</tr>
+<tr>
+  <th>AR.2</th>  <td>          -0.9178</td> <td>          +0.4910j</td> <td>           1.0409</td> <td>           0.4218</td>
+</tr>
+<tr>
+  <th>AR.3</th>  <td>          -1.1752</td> <td>          -0.0000j</td> <td>           1.1752</td> <td>          -0.5000</td>
+</tr>
+<tr>
+  <th>AR.4</th>  <td>          -0.6070</td> <td>          -0.8247j</td> <td>           1.0241</td> <td>          -0.3510</td>
+</tr>
+<tr>
+  <th>AR.5</th>  <td>          -0.6070</td> <td>          +0.8247j</td> <td>           1.0241</td> <td>           0.3510</td>
+</tr>
+<tr>
+  <th>AR.6</th>  <td>          -0.0849</td> <td>          -1.1181j</td> <td>           1.1213</td> <td>          -0.2621</td>
+</tr>
+<tr>
+  <th>AR.7</th>  <td>          -0.0849</td> <td>          +1.1181j</td> <td>           1.1213</td> <td>           0.2621</td>
+</tr>
+<tr>
+  <th>AR.8</th>  <td>           0.3804</td> <td>          -0.9597j</td> <td>           1.0323</td> <td>          -0.1899</td>
+</tr>
+<tr>
+  <th>AR.9</th>  <td>           0.3804</td> <td>          +0.9597j</td> <td>           1.0323</td> <td>           0.1899</td>
+</tr>
+<tr>
+  <th>AR.10</th> <td>           0.8226</td> <td>          -0.5979j</td> <td>           1.0170</td> <td>          -0.1000</td>
+</tr>
+<tr>
+  <th>AR.11</th> <td>           0.8226</td> <td>          +0.5979j</td> <td>           1.0170</td> <td>           0.1000</td>
+</tr>
+<tr>
+  <th>AR.12</th> <td>           1.1469</td> <td>          -0.1677j</td> <td>           1.1591</td> <td>          -0.0231</td>
+</tr>
+<tr>
+  <th>AR.13</th> <td>           1.1469</td> <td>          +0.1677j</td> <td>           1.1591</td> <td>           0.0231</td>
+</tr>
+<tr>
+  <th>AR.14</th> <td>           5.1284</td> <td>          -0.0000j</td> <td>           5.1284</td> <td>          -0.0000</td>
+</tr>
+<tr>
+  <th>AR.15</th> <td>          -9.1838</td> <td>          -0.0000j</td> <td>           9.1838</td> <td>          -0.5000</td>
+</tr>
+</table>
+
+
+```python
+# 预测测试集
+predictions = model_fitted.predict(
+    start=len(train_data), 
+    end=len(train_data) + len(test_data)-1, 
+    dynamic=False)  # dynamic参数表示是否用预测值动态预测下一个时刻的值
+
+# 比较真实值和预测值
+compare_df = pd.concat(
+    [sales_data['sales'].tail(12),
+    predictions], axis=1).rename(
+    columns={'sales': 'actual', 0:'predicted'})
+compare_df.plot()
+```
+
+
+![png](img\4_5.png)
+    
