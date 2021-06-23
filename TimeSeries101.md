@@ -696,7 +696,7 @@ plt.show()
 
 #### 4.1 自回归模型（Autoregressive)
 
-自回归模型基于的基础是可以用历史预测未来，也就是时刻t的数据能用之前时刻的函数来表示。
+自回归模型（AR）基于的基础是可以用历史预测未来，也就是时刻t的数据能用之前时刻的函数来表示。
 
 自回归模型是很多人在拟合时间序列数据时最先尝试的模型，尤其是在对该数据没有额外的了解时。它的基本公式可以用以下公式表示，
 $$
@@ -995,3 +995,102 @@ compare_df.plot()
 
 ![png](img\4_5.png)
     
+
+#### 4.2 移动平均模型（Moving Average）
+
+移动平均模型（MA）依赖的基础是每个时刻点的值是历史数据点错误项的函数，其中这些错误项是互相独立的。
+
+MA模型和AR模型的公式很类似，只是将公式中的历史数值替换成了历史数据的错误项e，由于错误项e是互相独立的，所以在MA模型中，t时刻的数值仅仅和最近的q个数值有关，而和更早的数据之间没有自相关性，在下面的实战中可以看到，如果对MA序列绘制ACF图，它的自相关关系是突然截断的。而AR序列的ACF图常常是缓慢下降的。
+$$
+y_t = \mu + e_t + \theta_1 * e_{t -1} + \theta_2 * e_{t -2} + ... + \theta_q * y_{t - q}
+$$
+同样的，和AR模型类似，满足上述公式的时间序列可以用MA(q)来表示。
+
+**python代码实战 **
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+from statsmodels.tsa.arima_model import ARMA
+from statsmodels.tsa.arima_process import ArmaProcess
+from statsmodels.graphics.tsaplots import plot_acf
+%matplotlib inline
+```
+
+模拟MA序列
+
+
+```python
+# ar,ma必须以array的形式输入，且第一位表示lag=0，通常这个值会设为1
+ar = np.array([1])  # ar项只有一个间隔=0的值表示是一个纯MA序列
+ma = np.array([1, -0.9]) # ma序列有两个值，第一个是常数项，第二个是前一个时刻的系数，这是一个MA(1)模型
+MA_object = ArmaProcess(ar, ma)
+simulated_data = MA_object.generate_sample(nsample=1000)
+plt.plot(simulated_data)
+```
+
+
+![png](img\4_6.png)
+    
+
+
+
+```python
+# 画出acf图像后看到，如上文所说，对于一个MA(1)序列，从时间间隔大于等于2开始，相关系数断崖式下降
+plot_acf(simulated_data, lags=20)
+plt.show()
+```
+
+
+![png](img\4_7.png)
+    
+
+模型拟合与评估
+
+
+```python
+# order=(0,1)表示这是一个纯MA(1)模型
+mod = ARMA(simulated_data_1, order=(0, 1))  
+res = mod.fit()
+
+# 观察模型拟合结果， 系数为-0.8937，和我们创建时间序列的系数-0.9很接近
+print(res.summary())
+
+# 打印拟合值
+print(res.params)
+```
+
+    [-6.05711676e-04 -8.93691112e-01]
+
+模型预测
+
+
+```python
+res.plot_predict(start=990, end=1010)
+plt.show()
+```
+
+
+![png](img\4_8.png)
+    
+
+
+可以看到MA模型仅仅对样本内的值有实际预测效果，对样本外的值会用统一用整体均值来预测
+
+
+
+
+
+### 参考资料
+
+书籍：
+
+1. https://www.oreilly.com/library/view/practical-time-series/9781492041641/
+
+2. https://machinelearningmastery.com/introduction-to-time-series-forecasting-with-python/
+
+网站：
+
+1. https://pythondata.com/forecasting-time-series-autoregression/
+
+2. https://goodboychan.github.io/python/datacamp/time_series_analysis/2020/06/08/02-Moving-Average-and-ARMA-Models.html
