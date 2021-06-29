@@ -1,4 +1,5 @@
-## 时间序列数据分析101
+时间序列数据分析101
+
 **大纲**
 
 1.概述
@@ -1077,6 +1078,256 @@ plt.show()
 
 可以看到MA模型仅仅对样本内的值有实际预测效果，对样本外的值会用统一用整体均值来预测
 
+#### 4.3 差分整合移动平均自回归模型（**A**uto**r**egressive **I**ntegrated **M**oving **A**verage）
+
+在了解了AR和MA模型后，我们将进一步学习结合了这两者的ARIMA模型，ARIMA在时间序列数据分析中有着非常重要的地位。但在这之前，让我们先来看ARIMA的简化版ARMA模型（**A**uto**r**egressive **m**oving **a**verage model），ARMA同样是结合了AR和MA模型，公式如下：
+$$
+y_t = c + \phi_1 * y_{t -1} + \phi_2 * y_{t -2} + ... + \phi_p * y_{t - p}   + e_t + \theta_1 * e_{t -1} + \theta_2 * e_{t -2} + ... + \theta_q * y_{t - q}
+$$
+可以看出，ARMA模型就是AR和MA的简单结合，同时包含了历史数值项和错误项。由于AR模型对时间序列有平稳性要求，ARMA模型也存在这个限制，因此我们将其拓展到ARIMA模型，引入的差分概念是一种获得时间序列的方法。最常使用的一种差分方法是计算当前项和前项的差值，获得一组新的时间序列。由于ARIMA强大的功能，这使得在统计领域有着非常广泛的应用，尤其适用于机器学习和深度学习难以应用的小样本数据集上，同时也应当警惕过拟合的情况发生。
+
+当我们拿到一个陌生的数据集时，可能会思考应当使用AR，MA，还是结合AR和MA的模型，一个简单的准则是画出ACF和PACF曲线，根据其特征来判断。
+
+| 函数     | AR(p)              | MA(q)              | ARMA or ARIMA  |
+| -------- | ------------------ | ------------------ | -------------- |
+| ACF曲线  | 缓缓下降           | 在间隔=q后突然下降 | 没有明显截止点 |
+| PACF曲线 | 在间隔=p后突然下降 | 缓缓下降           | 没有明显截止点 |
+
+在实际分析过程中，我们也可以一律使用ARIMA模型，因为AR,MA,ARMA都是它的一种特殊情况。
+
+ARIMA有三个参数p、d、q，写作ARIMA（p,d,q），其中p代表AR(p)，自回归阶数，d代表Integrated (d)，差分阶数，q代表MA(q)，移动平均阶数。我们应当确保这三个参数尽可能的小避免过拟合，一个可供参数的准则是，不要让d超过2，p和q超过5，并且p和q尽量保证一个是模型主导项，另一个相对较小。
+
+ARIMA有一些经典的特殊例子：
+
+- ARIMA(0, 0, 0) 是白噪声模型
+- ARIMA(0, 1, 0)是随机行走模型
+- ARIMA(0, 1, 1) 是指数平滑模型，而ARIMA(0, 2, 2) 是Holt线性趋势模型
+
+**python代码实战**
+
+如何确定ARIMA模型的参数通常有两种方法，手动拟合法和自动拟合法。
+
+手动拟合法是一种经验方法，最著名的方法被称为`Box-Jenkins method`，这是一个多步迭代过程，分为以下几个步骤，
+
+1. 结合对数据集的可视化和领域知识选择一组合适的模型
+2. 拟合模型
+3. 根据模型表现微调参数，以解决模型表现不佳的地方
+
+通过一个简单的例子来学习手动box-jenkins方法的使用过程。
+
+
+
+```python
+import matplotlib.pyplot as plt
+import pandas as pd
+import statsmodels.api as sm
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.arima_process import ArmaProcess
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.graphics.tsaplots import plot_pacf
+from pmdarima.arima import auto_arima
+from pmdarima.arima import ADFTest
+```
+
+
+
+
+```python
+# 模拟ARMA数据，在完成最终拟合前，请假装不知道样本时间序列的参数
+import statsmodels.api as sm
+ar = np.array([1,-0.8, 0.4])  
+ma = np.array([1,-0.7]) 
+arma_process = sm.tsa.ArmaProcess(ar, ma)
+y = arma_process.generate_sample(1000)
+plt.plot(y)
+```
+
+
+![png](img\4_9.png)
+    
+
+```python
+# step1 - 画出acf，pacf曲线，根据经验规则，没有明显的cutoff，模型应当包含AR和MA项
+plot_acf(y)
+plot_pacf(y)
+plt.show()
+```
+
+
+![png](img\4_10.png)
+    
+
+
+![png](img\4_11.png)
+    
+
+```python
+# step2，用最简单的arima(1,0,1)尝试拟合
+mod = ARIMA(y, order=(1,0,1))  
+res = mod.fit()
+```
+
+
+```python
+# step3，画出拟合残差的acf和pacf
+plot_acf(res.resid)
+plot_pacf(res.resid)
+plt.show()
+```
+
+
+![png](img\4_12.png)
+    
+
+
+![png](img\4_13.png)
+    
+
+```python
+# step4，从上面对residual绘制acf和pacf可以看到，还存在有显著的自相关性，说明最开始尝试的ARIMA(1,0,1)模型并没有充分表达原数据  
+# 尝试增加模型复杂度
+a2m1 = ARIMA(y, order=(2,0,1)).fit()  
+plot_acf(a2m1.resid)
+plot_pacf(a2m1.resid)
+plt.show()
+```
+
+
+![png](img\4_14.png)
+    
+
+
+![png](img\4_15.png)
+    
+
+```python
+# step5，通过将AR项从一阶改成二阶，这个更复杂的模型取得了不错的效果，残差的acf和pacf几乎看不到其他相关性存在  
+# 为了验证是否还能获得更好的模型，继续修改参数进行测试，一个简单快速的验证方式是计算真实值和预测值的相关系数
+def model_performance(p,d,q):
+    model = ARIMA(y, order=(p,d,q)).fit()  
+    df = pd.DataFrame({'predict':model.predict(),'true':y})
+    corr = df.corr().loc['predict','true']
+    print("ARIMA({0},{1},{2}) performance: {3} ".format(p,d,q,corr))
+```
+
+
+```python
+model_performance(1,0,1)
+model_performance(2,0,1)
+model_performance(1,0,2)
+model_performance(2,0,2)
+model_performance(2,1,2)
+```
+
+    ARIMA(1,0,1) performance: 0.23256695743385164 
+    ARIMA(2,0,1) performance: 0.42499463153273376 
+    ARIMA(1,0,2) performance: 0.39161778792506313 
+    ARIMA(2,0,2) performance: 0.42705219696176494 
+    ARIMA(2,1,2) performance: 0.4152659567936595 
+
+
+
+
+可以看到ARIMA(2,0,1)的效果有了明显提升，而当再增加模型复杂度时，效果没有明显提升。当然这只是一个极为粗略的手动拟合的例子，真实场景则需要更为精细的优化。
+
+
+```python
+ARIMA(y, order=(2,0,1)).fit().params # 模型系数 ar1=0.79,ar2=-0.4,ma1=-0.69和最开始我们创建的时间序列系数很接近，获得了不错的拟合效果
+```
+
+
+    array([ 0.00219359,  0.78972449, -0.40471765, -0.68275666,  0.97684689])
+
+从上面的例子中可以看出手动拟合法较为复杂，对经验要求很高，一些统计学家也长期致力于这类方法的优化思路。但同时也受到了一些人的批评，认为这种纯手工的方法效率太低，而且很依赖经验，不是最优的方法。
+
+下面就来学习如何进行自动拟合。
+
+**自动拟合法**
+
+
+```python
+# step1，准备数据
+sales_data = pd.read_csv('data/retail_sales.csv')
+sales_data['date']=pd.to_datetime(sales_data['date'])
+sales_data.set_index('date', inplace=True)
+sales_data.plot()
+```
+
+
+![png](img\4_16.png)
+    
+
+```python
+# step2，检查平稳性
+adf_test = ADFTest()
+adf_test.should_diff(sales_data) #结果表明不平稳，提示我们需要引入差分项
+```
+
+
+    (0.01, False)
+
+
+```python
+# step3，划分训练集和测试集
+train = sales_data[:60]
+test = sales_data[60:]
+```
+
+
+```python
+# step4，拟合模型
+arima_model = auto_arima(train, start_p=0, d=1,start_q=0, max_p=5,max_d=5,max_q=5,
+                         start_P=0, D=1, start_Q=0, max_P=5, max_D=5, max_Q=5, m=12, seasonal=True,trace=True,n_fits=50)
+```
+
+    Performing stepwise search to minimize aic
+     ARIMA(0,1,0)(0,1,0)[12]             : AIC=981.377, Time=0.02 sec
+     ARIMA(1,1,0)(1,1,0)[12]             : AIC=982.734, Time=0.11 sec
+     ARIMA(0,1,1)(0,1,1)[12]             : AIC=982.307, Time=0.14 sec
+     ARIMA(0,1,0)(1,1,0)[12]             : AIC=983.595, Time=0.13 sec
+     ARIMA(0,1,0)(0,1,1)[12]             : AIC=1005.088, Time=0.06 sec
+     ARIMA(0,1,0)(1,1,1)[12]             : AIC=1007.898, Time=0.31 sec
+     ARIMA(1,1,0)(0,1,0)[12]             : AIC=981.328, Time=0.02 sec
+     ARIMA(1,1,0)(0,1,1)[12]             : AIC=982.703, Time=0.13 sec
+     ARIMA(1,1,0)(1,1,1)[12]             : AIC=984.307, Time=0.68 sec
+     ARIMA(2,1,0)(0,1,0)[12]             : AIC=987.645, Time=0.04 sec
+     ARIMA(1,1,1)(0,1,0)[12]             : AIC=982.083, Time=0.19 sec
+     ARIMA(0,1,1)(0,1,0)[12]             : AIC=980.880, Time=0.06 sec
+     ARIMA(0,1,1)(1,1,0)[12]             : AIC=982.336, Time=0.10 sec
+     ARIMA(0,1,1)(1,1,1)[12]             : AIC=983.925, Time=0.46 sec
+     ARIMA(0,1,2)(0,1,0)[12]             : AIC=982.207, Time=0.08 sec
+     ARIMA(1,1,2)(0,1,0)[12]             : AIC=983.139, Time=0.17 sec
+     ARIMA(0,1,1)(0,1,0)[12] intercept   : AIC=982.868, Time=0.08 sec
+    
+    Best model:  ARIMA(0,1,1)(0,1,0)[12]          
+    Total fit time: 2.802 seconds
+
+
+
+```python
+# 查看模型结果
+arima_model.summary()
+```
+
+
+
+```python
+# step5，预测时间序列，并和真实值比较
+pred = pd.DataFrame(arima_model.predict(n_periods=12),columns=['predicted'],index=test.index)
+```
+
+
+```python
+plt.plot(train)
+plt.plot(test,label='true')
+plt.plot(pred,label='predict')
+plt.legend();
+```
+
+
+![png](img\4_17.png)
+    
+
 
 
 
@@ -1092,5 +1343,5 @@ plt.show()
 网站：
 
 1. https://pythondata.com/forecasting-time-series-autoregression/
-
 2. https://goodboychan.github.io/python/datacamp/time_series_analysis/2020/06/08/02-Moving-Average-and-ARMA-Models.html
+3. https://towardsdatascience.com/time-series-forecasting-using-auto-arima-in-python-bb83e49210cd
