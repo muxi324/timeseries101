@@ -1328,7 +1328,536 @@ plt.legend();
 ![png](img\4_17.png)
     
 
+#### 4.4 向量自回归模型（Vector Autoregression）
 
+以上三个章节我们讨论的都是单变量问题，现实世界往往更为复杂，这时我们将把AR模型从单变量拓展到多变量，多变量模型的特点是存在几组并行的时间序列，并且这些时间之间互相影响。
+
+本章讨论的模型就叫做向量自回归模型（VAR)，考虑一个三组并行时间序列数据的场景，在二阶的条件下，公式如下：
+$$
+y_{1,t} = \phi_{01} + \phi_{11,1} * y_{1,t -1} + \phi_{12,1} * y_{2,t -1} + \phi_{13,1} * y_{3,t -1} + \phi_{11,2} * y_{1,t -2} + \phi_{12,2} * y_{2,t -2} + \phi_{13,2} * y_{3,t -2} \\
+y_{2,t} = \phi_{02} + \phi_{21,1} * y_{1,t -1} + \phi_{22,1} * y_{2,t -1} + \phi_{23,1} * y_{3,t -1} + \phi_{21,2} * y_{1,t -2} + \phi_{22,2} * y_{2,t -2} + \phi_{23,2} * y_{3,t -2} \\
+y_{3,t} = \phi_{03} + \phi_{31,1} * y_{1,t -1} + \phi_{32,1} * y_{2,t -1} + \phi_{33,1} * y_{3,t -1} + \phi_{31,2} * y_{1,t -2} + \phi_{32,2} * y_{2,t -2} + \phi_{33,2} * y_{3,t -2}
+$$
+可以看到在AR模型的基础上，每一组时间序列的y值都加入了其他两组时间序列值作为模型因子。熟悉线性代数的读者可能已经发现，上面的三个公式可以写成向量乘法的形式，这也是VAR模型名字的由来，写作向量乘法的公式和前面学习的AR模型时完全一致的，在这个公式中，y和 $ \phi_0 $ 是$3\times1$的向量，$\phi_1, \phi_2 $ 是$3\times3$的矩阵。
+$$
+y = \phi_0 + \phi_1 × y_{t -1} + \phi_2 × y_{t -2}
+$$
+从公式中也能看到随着阶数上升，VAR模型的变量增加很快，因此在使用时只有当期待存在不同时间序列互相影响的关系时才尝试这种方法。VAR在某些场景下十分有用，
+
+- 测试某个变量是否影响其他变量
+- 大量变量需要被预测，而分析师没有太多领域知识
+- 决定某个预测值在多大程度上是由潜在的因果性导致的
+
+**python实战部分**
+
+```python
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.api import VAR
+from statsmodels.tsa.stattools import grangercausalitytests
+from statsmodels.tsa.vector_ar.vecm import coint_johansen
+from statsmodels.stats.stattools import durbin_watson
+%matplotlib inline
+```
+
+#### 
+
+
+```python
+# step1：导入数据，这是一个有八个指标的经济数据
+df = pd.read_csv('data/Raotbl6.csv', parse_dates=['date'], index_col='date')
+df.head()
+```
+
+
+
+
+```python
+# 画出八个时间序列的图像
+fig, axes = plt.subplots(nrows=4, ncols=2,figsize=(10,6))
+for i, ax in enumerate(axes.flatten()):
+    data = df[df.columns[i]]
+    ax.plot(data, color='red', linewidth=1)
+    ax.set_title(df.columns[i])
+plt.tight_layout();
+```
+
+
+![png](img\4_18.png)
+    
+
+
+
+```python
+# step2：Granger’s Causality Test ， 检验不同序列之间存在互相影响
+maxlag=12
+test='ssr_chi2test'
+variables=df.columns
+def grangers_causation_matrix(data, variables, test='ssr_chi2test', verbose=False):    
+    df = pd.DataFrame(np.zeros((len(variables), len(variables))), columns=variables, index=variables)
+    for c in df.columns:
+        for r in df.index:
+            test_result = grangercausalitytests(data[[r, c]], maxlag=maxlag, verbose=False)
+            p_values = [round(test_result[i+1][0][test][1],4) for i in range(maxlag)]
+            min_p_value = np.min(p_values)
+            df.loc[r, c] = min_p_value
+    df.columns = [var + '_x' for var in variables]
+    df.index = [var + '_y' for var in variables]
+    return df
+
+grangers_causation_matrix(df, variables = df.columns)   
+```
+
+
+
+在输出结果中，index以y结尾，表示响应变量，column以x结尾，表示预测变量，如果p值小于0.05表明存在格兰杰因果性。 
+因此根据检验数据，完全有理由使用VAR模型。
+
+
+```python
+# step3：ADF测试，检验单个变量是否平稳
+def adfuller_test(series, signif=0.05, name='', verbose=False):
+    r = adfuller(series, autolag='AIC')
+    output = {'test_statistic':round(r[0], 4), 'pvalue':round(r[1], 4), 'n_lags':round(r[2], 4), 'n_obs':r[3]}
+    p_value = output['pvalue'] 
+    def adjust(val, length= 6): return str(val).ljust(length)
+
+    # Print Summary
+    print(f'    Augmented Dickey-Fuller Test on "{name}"', "\n   ", '-'*47)
+    print(f' Null Hypothesis: Data has unit root. Non-Stationary.')
+    print(f' Significance Level    = {signif}')
+    print(f' Test Statistic        = {output["test_statistic"]}')
+    print(f' No. Lags Chosen       = {output["n_lags"]}')
+
+    for key,val in r[4].items():
+        print(f' Critical value {adjust(key)} = {round(val, 3)}')
+
+    if p_value <= signif:
+        print(f" => P-Value = {p_value}. Rejecting Null Hypothesis.")
+        print(f" => Series is Stationary.")
+    else:
+        print(f" => P-Value = {p_value}. Weak evidence to reject the Null Hypothesis.")
+        print(f" => Series is Non-Stationary.")    
+```
+
+
+```python
+for name, column in df.iteritems():
+    adfuller_test(column, name=column.name)
+    print('\n')
+```
+
+        Augmented Dickey-Fuller Test on "rgnp" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = 0.6419
+     No. Lags Chosen       = 2
+     Critical value 1%     = -3.486
+     Critical value 5%     = -2.886
+     Critical value 10%    = -2.58
+     => P-Value = 0.9886. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "pgnp" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = 1.2743
+     No. Lags Chosen       = 1
+     Critical value 1%     = -3.486
+     Critical value 5%     = -2.886
+     Critical value 10%    = -2.58
+     => P-Value = 0.9965. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "ulc" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = 1.3967
+     No. Lags Chosen       = 2
+     Critical value 1%     = -3.486
+     Critical value 5%     = -2.886
+     Critical value 10%    = -2.58
+     => P-Value = 0.9971. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfco" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = 0.5762
+     No. Lags Chosen       = 5
+     Critical value 1%     = -3.488
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.58
+     => P-Value = 0.987. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdf" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = 1.1129
+     No. Lags Chosen       = 7
+     Critical value 1%     = -3.489
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.58
+     => P-Value = 0.9953. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfim" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -0.1987
+     No. Lags Chosen       = 1
+     Critical value 1%     = -3.486
+     Critical value 5%     = -2.886
+     Critical value 10%    = -2.58
+     => P-Value = 0.9387. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfcf" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = 1.6693
+     No. Lags Chosen       = 9
+     Critical value 1%     = -3.49
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.581
+     => P-Value = 0.9981. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfce" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -0.8159
+     No. Lags Chosen       = 13
+     Critical value 1%     = -3.492
+     Critical value 5%     = -2.888
+     Critical value 10%    = -2.581
+     => P-Value = 0.8144. Weak evidence to reject the Null Hypothesis.
+     => Series is Non-Stationary.
+
+
+
+
+没有一个变量具有平稳性，提示我们需要进一步进行协整检验（cointegration test）。 
+一般来说进行协整检验的步骤如下： 
+1.单独检验单个变量是否平稳，使用ADF test, KPSS test, PP test等方法 。
+2.如果发现单个序列不平稳，则需要进一步进行协整检验。进行协整检验的目的是当每个变量本身不平稳，有可能他们在某些线性组合下是平稳的。如果两个时间序列是协整的，则表明他们具有长期的，统计学显著的关联，使用Johansen, Engle-Granger, and Phillips-Ouliaris等方法。
+
+
+```python
+# step4: 协整检验，检验多变量平稳性
+def cointegration_test(df, alpha=0.05): 
+    out = coint_johansen(df,-1,5)
+    d = {'0.90':0, '0.95':1, '0.99':2}
+    traces = out.lr1
+    cvts = out.cvt[:, d[str(1-alpha)]]
+    def adjust(val, length= 6): return str(val).ljust(length)
+
+    # Summary
+    print('Name   ::  Test Stat > C(95%)    =>   Signif  \n', '--'*20)
+    for col, trace, cvt in zip(df.columns, traces, cvts):
+        print(adjust(col), ':: ', adjust(round(trace,2), 9), ">", adjust(cvt, 8), ' =>  ' , trace > cvt)
+
+cointegration_test(df)
+```
+
+    Name   ::  Test Stat > C(95%)    =>   Signif  
+     ----------------------------------------
+    rgnp   ::  248.0     > 143.6691  =>   True
+    pgnp   ::  183.12    > 111.7797  =>   True
+    ulc    ::  130.01    > 83.9383   =>   True
+    gdfco  ::  85.28     > 60.0627   =>   True
+    gdf    ::  55.05     > 40.1749   =>   True
+    gdfim  ::  31.59     > 24.2761   =>   True
+    gdfcf  ::  14.06     > 12.3212   =>   True
+    gdfce  ::  0.45      > 4.1296    =>   False
+
+
+
+```python
+# step5：划分训练集和测试集
+nobs = 4  # 最后四个时间点作为测试集
+df_train, df_test = df[0:-nobs], df[-nobs:]
+```
+
+
+```python
+# step6：使用VAR之间，先差分处理使单个变量变得平稳
+df_differenced = df_train.diff().dropna()
+for name, column in df_differenced.iteritems():
+    adfuller_test(column, name=column.name)
+    print('\n')
+```
+
+
+
+
+```python
+# 一阶差分后仍然有些变量不平稳，进行二次差分
+df_differenced = df_differenced.diff().dropna()
+```
+
+
+```python
+for name, column in df_differenced.iteritems():
+    adfuller_test(column, name=column.name)
+    print('\n')
+```
+
+        Augmented Dickey-Fuller Test on "rgnp" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -9.0123
+     No. Lags Chosen       = 2
+     Critical value 1%     = -3.489
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.58
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "pgnp" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -10.9813
+     No. Lags Chosen       = 0
+     Critical value 1%     = -3.488
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.58
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "ulc" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -8.769
+     No. Lags Chosen       = 2
+     Critical value 1%     = -3.489
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.58
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfco" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -7.9102
+     No. Lags Chosen       = 3
+     Critical value 1%     = -3.49
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.581
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdf" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -10.0351
+     No. Lags Chosen       = 1
+     Critical value 1%     = -3.489
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.58
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfim" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -9.4059
+     No. Lags Chosen       = 1
+     Critical value 1%     = -3.489
+     Critical value 5%     = -2.887
+     Critical value 10%    = -2.58
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfcf" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -6.922
+     No. Lags Chosen       = 5
+     Critical value 1%     = -3.491
+     Critical value 5%     = -2.888
+     Critical value 10%    = -2.581
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+​    
+        Augmented Dickey-Fuller Test on "gdfce" 
+        -----------------------------------------------
+     Null Hypothesis: Data has unit root. Non-Stationary.
+     Significance Level    = 0.05
+     Test Statistic        = -5.1732
+     No. Lags Chosen       = 8
+     Critical value 1%     = -3.492
+     Critical value 5%     = -2.889
+     Critical value 10%    = -2.581
+     => P-Value = 0.0. Rejecting Null Hypothesis.
+     => Series is Stationary.
+
+
+
+
+```python
+# step7：选择模型阶数并训练，根据AIC值，lag=4时达到局部最优
+model = VAR(df_differenced)
+for i in [1,2,3,4,5,6,7,8,9]:
+    result = model.fit(i)
+    print('Lag Order =', i)
+    print('AIC : ', result.aic, '\n')
+```
+
+    Lag Order = 1
+    AIC :  -1.3679402315450668 
+    
+    Lag Order = 2
+    AIC :  -1.621237394447824 
+    
+    Lag Order = 3
+    AIC :  -1.76580083870128 
+    
+    Lag Order = 4
+    AIC :  -2.000735164470319 
+    
+    Lag Order = 5
+    AIC :  -1.9619535608363936 
+    
+    Lag Order = 6
+    AIC :  -2.3303386524829053 
+    
+    Lag Order = 7
+    AIC :  -2.592331352347122 
+    
+    Lag Order = 8
+    AIC :  -3.3172619764582087 
+    
+    Lag Order = 9
+    AIC :  -4.804763125958635 
+
+
+​    
+
+```python
+# 选择lag=4拟合模型
+model_fitted = model.fit(4)
+model_fitted.summary()
+```
+
+
+
+
+```python
+# step8：durbin watson test，检验残差项中是否还存在相关性，这一步的目的是确保模型已经解释了数据中所有的方差和模式
+out = durbin_watson(model_fitted.resid)
+for col, val in zip(df.columns, out):
+    print(adjust(col), ':', round(val, 2))  # 检验值越接近2，说明模型越好
+```
+
+    rgnp   : 2.09
+    pgnp   : 2.02
+    ulc    : 2.17
+    gdfco  : 2.05
+    gdf    : 2.25
+    gdfim  : 1.99
+    gdfcf  : 2.2
+    gdfce  : 2.17
+
+
+
+```python
+# step9：模型已经足够使用了，下一步进行预测
+lag_order = model_fitted.k_ar
+forecast_input = df_differenced.values[-lag_order:]
+fc = model_fitted.forecast(y=forecast_input, steps=nobs)
+df_forecast = pd.DataFrame(fc, index=df.index[-nobs:], columns=df.columns + '_2d')
+df_forecast
+```
+
+
+
+
+```python
+# step10：将差分后的值还原为原数据
+def invert_transformation(df_train, df_forecast):
+    df_fc = df_forecast.copy()
+    columns = df_train.columns
+    for col in columns: 
+        # 写一个长度为6的数列，用纸笔写出差分的计算过程，可以帮助理解下面这两行还原过程
+        df_fc[str(col)+'_1d'] = (df_train[col].iloc[-1]-df_train[col].iloc[-2]) + df_fc[str(col)+'_2d'].cumsum()
+        df_fc[str(col)+'_forecast'] = df_train[col].iloc[-1] + df_fc[str(col)+'_1d'].cumsum()
+    return df_fc
+```
+
+
+```python
+df_results = invert_transformation(df_train, df_forecast)  
+df_results.loc[:, ['rgnp_forecast', 'pgnp_forecast', 'ulc_forecast', 'gdfco_forecast',
+                   'gdf_forecast', 'gdfim_forecast', 'gdfcf_forecast', 'gdfce_forecast']]
+```
+
+
+
+
+```python
+fig, axes = plt.subplots(nrows=int(len(df.columns)/2), ncols=2, dpi=150, figsize=(10,10))
+for i, (col,ax) in enumerate(zip(df.columns, axes.flatten())):
+    df_results[col+'_forecast'].plot(legend=True, ax=ax).autoscale(axis='x',tight=True)
+    df_test[col][-nobs:].plot(legend=True, ax=ax);
+    ax.set_title(col + ": Forecast vs Actuals")
+    ax.xaxis.set_ticks_position('none')
+    ax.yaxis.set_ticks_position('none')
+    ax.spines["top"].set_alpha(0)
+    ax.tick_params(labelsize=6)
+
+plt.tight_layout();
+```
+
+
+![png](img\4_19.png)
+    
 
 
 
@@ -1345,3 +1874,6 @@ plt.legend();
 1. https://pythondata.com/forecasting-time-series-autoregression/
 2. https://goodboychan.github.io/python/datacamp/time_series_analysis/2020/06/08/02-Moving-Average-and-ARMA-Models.html
 3. https://towardsdatascience.com/time-series-forecasting-using-auto-arima-in-python-bb83e49210cd
+4. https://www.machinelearningplus.com/time-series/vector-autoregression-examples-python/#6testingcausationusinggrangerscausalitytest
+5. https://towardsdatascience.com/vector-autoregressive-for-forecasting-time-series-a60e6f168c70
+
