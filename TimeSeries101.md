@@ -1463,101 +1463,101 @@ for name, column in df.iteritems():
 
 
 ​    
-        Augmented Dickey-Fuller Test on "pgnp" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = 1.2743
-     No. Lags Chosen       = 1
-     Critical value 1%     = -3.486
-     Critical value 5%     = -2.886
-     Critical value 10%    = -2.58
-     => P-Value = 0.9965. Weak evidence to reject the Null Hypothesis.
-     => Series is Non-Stationary.
+​        Augmented Dickey-Fuller Test on "pgnp" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = 1.2743
+​     No. Lags Chosen       = 1
+​     Critical value 1%     = -3.486
+​     Critical value 5%     = -2.886
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.9965. Weak evidence to reject the Null Hypothesis.
+​     => Series is Non-Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "ulc" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = 1.3967
-     No. Lags Chosen       = 2
-     Critical value 1%     = -3.486
-     Critical value 5%     = -2.886
-     Critical value 10%    = -2.58
-     => P-Value = 0.9971. Weak evidence to reject the Null Hypothesis.
-     => Series is Non-Stationary.
+​        Augmented Dickey-Fuller Test on "ulc" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = 1.3967
+​     No. Lags Chosen       = 2
+​     Critical value 1%     = -3.486
+​     Critical value 5%     = -2.886
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.9971. Weak evidence to reject the Null Hypothesis.
+​     => Series is Non-Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfco" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = 0.5762
-     No. Lags Chosen       = 5
-     Critical value 1%     = -3.488
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.58
-     => P-Value = 0.987. Weak evidence to reject the Null Hypothesis.
-     => Series is Non-Stationary.
+​        Augmented Dickey-Fuller Test on "gdfco" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = 0.5762
+​     No. Lags Chosen       = 5
+​     Critical value 1%     = -3.488
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.987. Weak evidence to reject the Null Hypothesis.
+​     => Series is Non-Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdf" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = 1.1129
-     No. Lags Chosen       = 7
-     Critical value 1%     = -3.489
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.58
-     => P-Value = 0.9953. Weak evidence to reject the Null Hypothesis.
-     => Series is Non-Stationary.
+​        Augmented Dickey-Fuller Test on "gdf" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = 1.1129
+​     No. Lags Chosen       = 7
+​     Critical value 1%     = -3.489
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.9953. Weak evidence to reject the Null Hypothesis.
+​     => Series is Non-Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfim" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -0.1987
-     No. Lags Chosen       = 1
-     Critical value 1%     = -3.486
-     Critical value 5%     = -2.886
-     Critical value 10%    = -2.58
-     => P-Value = 0.9387. Weak evidence to reject the Null Hypothesis.
-     => Series is Non-Stationary.
+​        Augmented Dickey-Fuller Test on "gdfim" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -0.1987
+​     No. Lags Chosen       = 1
+​     Critical value 1%     = -3.486
+​     Critical value 5%     = -2.886
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.9387. Weak evidence to reject the Null Hypothesis.
+​     => Series is Non-Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfcf" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = 1.6693
-     No. Lags Chosen       = 9
-     Critical value 1%     = -3.49
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.581
-     => P-Value = 0.9981. Weak evidence to reject the Null Hypothesis.
-     => Series is Non-Stationary.
+​        Augmented Dickey-Fuller Test on "gdfcf" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = 1.6693
+​     No. Lags Chosen       = 9
+​     Critical value 1%     = -3.49
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.581
+​     => P-Value = 0.9981. Weak evidence to reject the Null Hypothesis.
+​     => Series is Non-Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfce" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -0.8159
-     No. Lags Chosen       = 13
-     Critical value 1%     = -3.492
-     Critical value 5%     = -2.888
-     Critical value 10%    = -2.581
-     => P-Value = 0.8144. Weak evidence to reject the Null Hypothesis.
-     => Series is Non-Stationary.
+​        Augmented Dickey-Fuller Test on "gdfce" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -0.8159
+​     No. Lags Chosen       = 13
+​     Critical value 1%     = -3.492
+​     Critical value 5%     = -2.888
+​     Critical value 10%    = -2.581
+​     => P-Value = 0.8144. Weak evidence to reject the Null Hypothesis.
+​     => Series is Non-Stationary.
 
 
 
@@ -1642,101 +1642,101 @@ for name, column in df_differenced.iteritems():
 
 
 ​    
-        Augmented Dickey-Fuller Test on "pgnp" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -10.9813
-     No. Lags Chosen       = 0
-     Critical value 1%     = -3.488
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.58
-     => P-Value = 0.0. Rejecting Null Hypothesis.
-     => Series is Stationary.
+​        Augmented Dickey-Fuller Test on "pgnp" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -10.9813
+​     No. Lags Chosen       = 0
+​     Critical value 1%     = -3.488
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.0. Rejecting Null Hypothesis.
+​     => Series is Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "ulc" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -8.769
-     No. Lags Chosen       = 2
-     Critical value 1%     = -3.489
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.58
-     => P-Value = 0.0. Rejecting Null Hypothesis.
-     => Series is Stationary.
+​        Augmented Dickey-Fuller Test on "ulc" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -8.769
+​     No. Lags Chosen       = 2
+​     Critical value 1%     = -3.489
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.0. Rejecting Null Hypothesis.
+​     => Series is Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfco" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -7.9102
-     No. Lags Chosen       = 3
-     Critical value 1%     = -3.49
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.581
-     => P-Value = 0.0. Rejecting Null Hypothesis.
-     => Series is Stationary.
+​        Augmented Dickey-Fuller Test on "gdfco" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -7.9102
+​     No. Lags Chosen       = 3
+​     Critical value 1%     = -3.49
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.581
+​     => P-Value = 0.0. Rejecting Null Hypothesis.
+​     => Series is Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdf" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -10.0351
-     No. Lags Chosen       = 1
-     Critical value 1%     = -3.489
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.58
-     => P-Value = 0.0. Rejecting Null Hypothesis.
-     => Series is Stationary.
+​        Augmented Dickey-Fuller Test on "gdf" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -10.0351
+​     No. Lags Chosen       = 1
+​     Critical value 1%     = -3.489
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.0. Rejecting Null Hypothesis.
+​     => Series is Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfim" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -9.4059
-     No. Lags Chosen       = 1
-     Critical value 1%     = -3.489
-     Critical value 5%     = -2.887
-     Critical value 10%    = -2.58
-     => P-Value = 0.0. Rejecting Null Hypothesis.
-     => Series is Stationary.
+​        Augmented Dickey-Fuller Test on "gdfim" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -9.4059
+​     No. Lags Chosen       = 1
+​     Critical value 1%     = -3.489
+​     Critical value 5%     = -2.887
+​     Critical value 10%    = -2.58
+​     => P-Value = 0.0. Rejecting Null Hypothesis.
+​     => Series is Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfcf" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -6.922
-     No. Lags Chosen       = 5
-     Critical value 1%     = -3.491
-     Critical value 5%     = -2.888
-     Critical value 10%    = -2.581
-     => P-Value = 0.0. Rejecting Null Hypothesis.
-     => Series is Stationary.
+​        Augmented Dickey-Fuller Test on "gdfcf" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -6.922
+​     No. Lags Chosen       = 5
+​     Critical value 1%     = -3.491
+​     Critical value 5%     = -2.888
+​     Critical value 10%    = -2.581
+​     => P-Value = 0.0. Rejecting Null Hypothesis.
+​     => Series is Stationary.
 
 
 ​    
-        Augmented Dickey-Fuller Test on "gdfce" 
-        -----------------------------------------------
-     Null Hypothesis: Data has unit root. Non-Stationary.
-     Significance Level    = 0.05
-     Test Statistic        = -5.1732
-     No. Lags Chosen       = 8
-     Critical value 1%     = -3.492
-     Critical value 5%     = -2.889
-     Critical value 10%    = -2.581
-     => P-Value = 0.0. Rejecting Null Hypothesis.
-     => Series is Stationary.
+​        Augmented Dickey-Fuller Test on "gdfce" 
+​        -----------------------------------------------
+​     Null Hypothesis: Data has unit root. Non-Stationary.
+​     Significance Level    = 0.05
+​     Test Statistic        = -5.1732
+​     No. Lags Chosen       = 8
+​     Critical value 1%     = -3.492
+​     Critical value 5%     = -2.889
+​     Critical value 10%    = -2.581
+​     => P-Value = 0.0. Rejecting Null Hypothesis.
+​     => Series is Stationary.
 
 
 
@@ -1859,6 +1859,22 @@ plt.tight_layout();
 ![png](img\4_19.png)
     
 
+#### 4.5 基于统计学方法的优势与劣势
+
+优势：
+
+- 模型简单透明，参数易于理解，由于统计学模型能够写出简单明了的公式，能够用严谨的方式推导
+- 能够适用于小数据集，并且得到不错的效果，相比于复杂的机器学习模型并没有明显区别，还可以避免过拟合的发生
+- 模型自动选择参数的方法已经十分成熟了，很容易用来估计参数
+
+劣势
+
+- 在大型数据集上表现不够理想，在超大规模的数据集上，更为复杂的机器学习或深度学习方法更胜一筹
+- 统计学方法更侧重于点估计，例如整体分布的均值而不是分布本身，这使得这类方法在分析数据时丢掉了一部分信息
+- 统计学模型不擅长处理非线性问题
+
+
+
 
 
 ### 参考资料
@@ -1876,4 +1892,3 @@ plt.tight_layout();
 3. https://towardsdatascience.com/time-series-forecasting-using-auto-arima-in-python-bb83e49210cd
 4. https://www.machinelearningplus.com/time-series/vector-autoregression-examples-python/#6testingcausationusinggrangerscausalitytest
 5. https://towardsdatascience.com/vector-autoregressive-for-forecasting-time-series-a60e6f168c70
-
