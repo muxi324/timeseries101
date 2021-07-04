@@ -12,11 +12,13 @@
 
 5.基于状态空间模型的时间序列分析方法
 
-6.基于机器学习的时间序列分析方法
+6.特征生成和特征选择
 
-7.基于深度学习的时间序列分析方法
+7.基于机器学习的时间序列分析方法
 
-8.模型优化的考虑
+8.基于深度学习的时间序列分析方法
+
+9.模型优化的考虑
 
 
 
@@ -1875,7 +1877,724 @@ plt.tight_layout();
 
 
 
+### 6. 特征生成和特征选择
 
+在之前的章节中，用到的分析方法都用到了时间序列中所有的数据点，而在接下来要介绍的机器学习部分，我们并不会用到全部的数据点，因此在本章引入了特征生成的概念。特征生成是一个找到一种量化的方式，从时间序列中提取出最重要的信息，生成一些数值和类别标签。本质上特征生成做的是压缩原数据，生成一组具有足够代表性的更小的数据。例如用均值和时间点的数量表示原时间序列数据就是一个最简单的例子。在本章，我们将首先讨论利用经验或行业知识手动生成特征的思路，但是在实际工程中，由于涉及到的特征非常多，完全依靠人工生成特征的方式是不理想的，最后一节会进一步介绍如何使用python自动生成特征和特征选择。
+
+#### 6.1 特征工程的考虑
+
+举一个简单的例子，下面的表格列出了过去一周7天的温度情况，其中每天记录三次（早中晚）。
+
+| 时间 | 温度（°F） |
+| ---- | ---------- |
+|	Monday morning	|	35	|
+|	Monday midday	|	52	|
+|	Monday evening	|	15	|
+|	Tuesday	morning	|	37	|
+|	Tuesday	midday	|	52	|
+|	Tuesday evening	|	15	|
+|	Wednesday morning	|	37	|
+|	Wednesday midday	|	54	|
+|	Wednesday evening	|	16	|
+|	Thursday morning	|	39	|
+|	Thursday midday	|	51	|
+|	Thursday evening	|	12	|
+|	Friday morning	|	41	|
+|	Friday midday	|	55	|
+|	Friday evening	|	20	|
+|	Saturday morning	|	43	|
+|	Saturday midday	|	58	|
+|	Saturday evening	|	22	|
+|	Sunday morning	|	46	|
+|	Sunday midday	|	61	|
+|	Sunday evening	|	35	|
+
+如果将这些数据点化成折线图，你能看到两个特点，周期性（每天一循环）和趋势性（逐渐增加）。因此考虑这个例子时，我们可以用一些描述性的指标将这个图像的特征提取出来。可以考虑的指标包括以下这些，
+
+- 周期性；按天
+- 增加性的趋势；例如计算出斜率
+- 早上，中午和晚上的气温均值
+
+通过计算这些指标，我们可以将一个21个值的时间序列压缩成几个数字，同时没有损失太多信息。下一步则是根据实际需要进行特征选择。
+
+以上是一个基础的例子，下面我们将进一步讨论进行特征生成要注意的考虑因素。
+
+**A. 时间序列的性质**
+
+时间序列的性质是应当首先考虑的。
+
+1. 平稳性
+
+   许多时间序列特征都假定数据是平稳的。例如时间序列均值这个特征只有当数据本身是平稳的才有意义。
+
+2. 时间序列长度
+
+   例如最大值和最小值这些特征对于时间序列长度是固定的才有意义，如果时间序列长度是动态增加的，该指标会变得不稳定。一个更长的时间序列出现极端值变多了可能只是因为时间序列变长以后，收集到更多数据点，才导致出现概率增加了。
+
+**B. 领域知识**
+
+场景1：考虑一个物理学时间序列，你需要确保选择的特征在物理学的时间尺度上是有意义的，以及你选择的特征不会受到测量仪器的误差影响。
+
+场景2：考虑一个金融市场上的时间序列，根据行业知识，有些交易市场为了确保金融稳定性，会强制设置每天的最大价格变化，当价格变动过大时，市场会暂时关闭。关于最大价格的特征就会是一个考虑了领域知识的因素。
+
+
+
+#### 6.2 常用的特征清单
+
+尽管特征生成的方法千差万别，而且十分依赖于你的特定数据集，想象力，编程能力和领域知识，仍然有一些很常用的特征生成的方法，它们包括了：
+
+- 均值和方差
+- 最大值和最小值
+- 第一个值和最后一个值的差值
+- 局部最大值和局部最小值的数量
+- 周期性和自相关性
+
+除了手动创建以上这些特征，在python一些库中内置了更多封装好的时间序列特征供用户选择调用，著名的两个库是`tsfresh`和`cesium`，感兴趣的可以去官方文档查阅更多信息。
+
+https://tsfresh.readthedocs.io/en/latest/
+
+http://cesium-ml.org/docs/
+
+tsfresh提供了几十种时间序列特征，避免使用者重复造轮子，能帮助我们更高效生成特征，并且这个库的设计能够和机器学习库sklearn实现对接，建模更方便。
+
+在这个链接可以查看tsfresh库全部的生成特征的方法。
+
+https://tsfresh.readthedocs.io/en/latest/text/list_of_features.html
+
+类似的，在这个链接可以查看cesium库全部的生成特征的方法。
+
+http://cesium-ml.org/docs/feature_table.html
+
+需要注意的是，你可能会发现很多时间序列特征生成的过程是很耗时的，如果能事先结合经验和领域知识预判哪些特征是无意义的，不相关的，可以为我们节省很多计算上的时间。
+
+
+
+#### 6.3 自动特征生成与选择
+
+下面将使用tsfresh包演示如何进行自动特征生成和特征选择
+
+```python
+from tsfresh.examples.robot_execution_failures import download_robot_execution_failures,load_robot_execution_failures
+from tsfresh import extract_features,select_features
+import pandas as pd
+```
+
+下一步需要注意，由于国内网络的限制，直接运行时会导致连接失败，此时有两个办法  
+1）在该地址 https://github.com/MaxBenChrist/robot-failure-dataset  手动下载lp1.data  
+2）在网站https://www.ipaddress.com 输入https://raw.githubusercontent.com 的真实ip，然后在C:\Windows\System32\drivers\etc下的hosts文件中添加类似这样的几行185.199.108.133 raw.githubusercontent.com  
+
+
+```python
+download_robot_execution_failures() #下载数据
+timeseries, y = load_robot_execution_failures() # 加载数据
+```
+
+
+```python
+timeseries.columns #该数据集包含8列，其中id表明类别id，time为时间轴，其他6列为不同维度的时间序列值
+```
+
+
+    Index(['id', 'time', 'F_x', 'F_y', 'F_z', 'T_x', 'T_y', 'T_z'], dtype='object')
+
+
+```python
+# 自动抽取全部特征
+X_extracted = extract_features(timeseries,column_id = "id",column_sort = "time")
+X_extracted
+```
+
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>T_x__variance_larger_than_standard_deviation</th>
+      <th>T_x__has_duplicate_max</th>
+      <th>T_x__has_duplicate_min</th>
+      <th>T_x__has_duplicate</th>
+      <th>T_x__sum_values</th>
+      <th>T_x__abs_energy</th>
+      <th>T_x__mean_abs_change</th>
+      <th>T_x__mean_change</th>
+      <th>T_x__mean_second_derivative_central</th>
+      <th>T_x__median</th>
+      <th>...</th>
+      <th>F_z__permutation_entropy__dimension_5__tau_1</th>
+      <th>F_z__permutation_entropy__dimension_6__tau_1</th>
+      <th>F_z__permutation_entropy__dimension_7__tau_1</th>
+      <th>F_z__query_similarity_count__query_None__threshold_0.0</th>
+      <th>F_z__matrix_profile__feature_"min"__threshold_0.98</th>
+      <th>F_z__matrix_profile__feature_"max"__threshold_0.98</th>
+      <th>F_z__matrix_profile__feature_"mean"__threshold_0.98</th>
+      <th>F_z__matrix_profile__feature_"median"__threshold_0.98</th>
+      <th>F_z__matrix_profile__feature_"25"__threshold_0.98</th>
+      <th>F_z__matrix_profile__feature_"75"__threshold_0.98</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1</th>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>-43.0</td>
+      <td>125.0</td>
+      <td>0.214286</td>
+      <td>0.071429</td>
+      <td>0.038462</td>
+      <td>-3.0</td>
+      <td>...</td>
+      <td>1.972247</td>
+      <td>2.163956</td>
+      <td>2.197225</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>-53.0</td>
+      <td>363.0</td>
+      <td>3.785714</td>
+      <td>-0.071429</td>
+      <td>0.153846</td>
+      <td>-3.0</td>
+      <td>...</td>
+      <td>2.397895</td>
+      <td>2.302585</td>
+      <td>2.197225</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>-60.0</td>
+      <td>344.0</td>
+      <td>3.214286</td>
+      <td>0.071429</td>
+      <td>-0.076923</td>
+      <td>-5.0</td>
+      <td>...</td>
+      <td>2.397895</td>
+      <td>2.302585</td>
+      <td>2.197225</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>-93.0</td>
+      <td>763.0</td>
+      <td>3.714286</td>
+      <td>-0.428571</td>
+      <td>-0.192308</td>
+      <td>-6.0</td>
+      <td>...</td>
+      <td>2.271869</td>
+      <td>2.302585</td>
+      <td>2.197225</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>-105.0</td>
+      <td>849.0</td>
+      <td>4.071429</td>
+      <td>-0.357143</td>
+      <td>0.000000</td>
+      <td>-8.0</td>
+      <td>...</td>
+      <td>2.271869</td>
+      <td>2.302585</td>
+      <td>2.197225</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>84</th>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>5083.0</td>
+      <td>1825597.0</td>
+      <td>18.857143</td>
+      <td>15.285714</td>
+      <td>-0.538462</td>
+      <td>394.0</td>
+      <td>...</td>
+      <td>1.366711</td>
+      <td>1.609438</td>
+      <td>1.831020</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>-511.0</td>
+      <td>18023.0</td>
+      <td>2.785714</td>
+      <td>-1.214286</td>
+      <td>0.192308</td>
+      <td>-33.0</td>
+      <td>...</td>
+      <td>1.972247</td>
+      <td>2.163956</td>
+      <td>2.197225</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>-987.0</td>
+      <td>67981.0</td>
+      <td>3.928571</td>
+      <td>-3.500000</td>
+      <td>-0.153846</td>
+      <td>-65.0</td>
+      <td>...</td>
+      <td>0.600166</td>
+      <td>0.639032</td>
+      <td>0.683739</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>-1921.0</td>
+      <td>247081.0</td>
+      <td>6.642857</td>
+      <td>-0.357143</td>
+      <td>0.461538</td>
+      <td>-126.0</td>
+      <td>...</td>
+      <td>1.366711</td>
+      <td>1.609438</td>
+      <td>1.831020</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>-304.0</td>
+      <td>6408.0</td>
+      <td>2.428571</td>
+      <td>-0.714286</td>
+      <td>0.230769</td>
+      <td>-21.0</td>
+      <td>...</td>
+      <td>2.397895</td>
+      <td>2.302585</td>
+      <td>2.197225</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>88 rows × 4722 columns</p>
+
+
+
+```python
+# 选择性生成特征
+fc_parameters = {
+    "length": None,
+    "large_standard_deviation": [{"r": 0.05}, {"r": 0.1}]
+}
+extract_features(timeseries, column_id = "id",column_sort = "time",default_fc_parameters=fc_parameters)
+```
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>F_x__length</th>
+      <th>F_x__large_standard_deviation__r_0.05</th>
+      <th>F_x__large_standard_deviation__r_0.1</th>
+      <th>F_y__length</th>
+      <th>F_y__large_standard_deviation__r_0.05</th>
+      <th>F_y__large_standard_deviation__r_0.1</th>
+      <th>F_z__length</th>
+      <th>F_z__large_standard_deviation__r_0.05</th>
+      <th>F_z__large_standard_deviation__r_0.1</th>
+      <th>T_x__length</th>
+      <th>T_x__large_standard_deviation__r_0.05</th>
+      <th>T_x__large_standard_deviation__r_0.1</th>
+      <th>T_y__length</th>
+      <th>T_y__large_standard_deviation__r_0.05</th>
+      <th>T_y__large_standard_deviation__r_0.1</th>
+      <th>T_z__length</th>
+      <th>T_z__large_standard_deviation__r_0.05</th>
+      <th>T_z__large_standard_deviation__r_0.1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>84</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+      <td>15.0</td>
+      <td>1.0</td>
+      <td>1.0</td>
+    </tr>
+  </tbody>
+</table>
+<p>88 rows × 18 columns</p>
+
+
+
+```python
+# 自动特征选择
+X_extracted_cols = X_extracted.isnull().sum().where(lambda x : x==0).dropna().index  # 由于不是所有生成的变量都是有意义的，删除掉包含NA的特征，这也是特征选择函数的要求
+X_selected = select_features(X_extracted[X_extracted_cols], y)
+```
+
+
+```python
+# fresh算法自动从2203个特征中选择出了665个
+print('count of raw feature: {}'.format(len(X_extracted_cols)))
+print('count of auto-selected feature: {}'.format(len(X_selected.columns)))
+```
+
+    count of raw feature: 2203
+    count of auto-selected feature: 665
+官方文档的这个流程展示了用fresh算法进行特征选择的思路，简单来说，它是通过比较不同时间序列类别下特征的显著性差异来确定是否要挑选出这个特征。
+
+![](https://tsfresh.readthedocs.io/en/latest/_images/feature_extraction_process_20160815_mc_1.png)
+
+除此之外，还有其他用于特征选择的方法，如recursive feature elimination (RFE)，不过tsfresh包并没有内置这种方法，可以结合sklearn中的RFE方法自行组合使用。
 
 ### 参考资料
 
