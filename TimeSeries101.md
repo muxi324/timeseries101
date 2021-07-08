@@ -1979,8 +1979,8 @@ from tsfresh import extract_features,select_features
 import pandas as pd
 ```
 
-下一步需要注意，由于国内网络的限制，直接运行时会导致连接失败，此时有两个办法  
-1）在该地址 https://github.com/MaxBenChrist/robot-failure-dataset  手动下载lp1.data  
+下一步需要注意，由于国内网络的限制，直接运行时会导致连接失败，此时有两个办法 
+1）在该地址 https://github.com/MaxBenChrist/robot-failure-dataset  手动下载lp1.data 
 2）在网站https://www.ipaddress.com 输入https://raw.githubusercontent.com 的真实ip，然后在C:\Windows\System32\drivers\etc下的hosts文件中添加类似这样的几行185.199.108.133 raw.githubusercontent.com  
 
 
@@ -2596,6 +2596,172 @@ print('count of auto-selected feature: {}'.format(len(X_selected.columns)))
 
 除此之外，还有其他用于特征选择的方法，如recursive feature elimination (RFE)，不过tsfresh包并没有内置这种方法，可以结合sklearn中的RFE方法自行组合使用。
 
+
+
+### 7. 基于机器学习的时间序列分析方法
+
+本章开始介绍基于机器学习的时间序列分析方法，机器学习在时间序列分析中属于一类比较新的方法，因为机器学习在最开始就不是为了时间序列而设计的，但事实证明机器学习也是很有效果的。
+
+在之前讨论的统计学方法中，我们的思路是首先形成关于时间序列动力学的潜在理论，用统计学来表述噪声和不确定性，然后用假设的动力学去做预测，评估不确定性。而在基于机器学习的方法中，我们不再事先做太多假定，而是试着去探索发现时间序列行为中的模式（pattern）。
+
+和传统机器学习方法类似，应用于时间序列分析上同样分为有监督学习（分类，预测）和非监督学习（聚类）两类。
+
+在撰写本章时，假定读者已经拥有基本的机器学习知识，故下文不再对算法本身做详细介绍。
+
+#### 7.1 时间序列分类问题
+
+本节将直接进入实战，以原始的脑电图时间序列数据为例，演示如何使用机器学习模型进行时间序列分类。
+
+该脑电图数据集共有5个类别，
+
+- 睁眼和闭眼的健康人脑电图记录
+- 癫痫患者在无癫痫发作期间的两个非癫痫相关区域脑电图记录
+- 癫痫发作期间脑电图的颅内记录
+
+本节将根据原始时间序列构造特征，再进行机器学习预测脑电图的分类。
+
+```python
+import matplotlib.pyplot as plt
+from tsfresh import extract_features
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
+```
+
+
+```python
+eeg = pd.read_csv('data\eeg.csv')
+eeg.head()
+```
+
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>times</th>
+      <th>measurements</th>
+      <th>classes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>40.0</td>
+      <td>Z</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>0.005762</td>
+      <td>48.0</td>
+      <td>Z</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>0.011523</td>
+      <td>35.0</td>
+      <td>Z</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0</td>
+      <td>0.017285</td>
+      <td>5.0</td>
+      <td>Z</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0</td>
+      <td>0.023047</td>
+      <td>-40.0</td>
+      <td>Z</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+```python
+# 观察不同类别的时间序列特征，为后面构造特征做准备
+plt.subplot(3, 1, 1)
+plt.plot(eeg[eeg.id==0]['times'], eeg[eeg.id==0]['measurements'])
+plt.legend(eeg.loc[0,'classes'])
+plt.subplot(3, 1, 2)
+plt.plot(eeg[eeg.id==300]['times'],eeg[eeg.id==300]['measurements'])
+plt.legend(eeg.loc[300*4097,'classes'])
+plt.subplot(3, 1, 3)
+plt.plot(eeg[eeg.id==450]['times'],eeg[eeg.id==450]['measurements'])
+plt.legend(eeg.loc[450*4097,'classes'])
+plt.tight_layout()
+```
+
+![png](img\7_1.png)
+
+将时间序列以可视化的形式画出可以为我们构造特征提供些许指导。 例如，从图表中发现，Z 类和 G 类的数据比 S 类曲折更少。此外，每个类都有相当不同的值域范围，数据点的分布似乎也有所不同。
+
+
+```python
+# 抽取特征，根据观察可视化人工选择了6个特征
+fc_parameters = {
+    "skewness": None,
+    "ratio_beyond_r_sigma": [{"r": 1}],
+    "maximum":None,
+    "minimum":None,
+    "mean_abs_change":None,
+    "longest_strike_above_mean":None
+}
+data = extract_features(eeg, column_id = "id",column_sort = "times",column_value="measurements",chunksize=20, default_fc_parameters=fc_parameters) 
+# chunksize设置一个较小的值是为了防止电脑内存不足
+```
+
+
+
+```python
+data.index.names=['id']
+data.reset_index()
+data = data.merge(eeg[['id','classes']].drop_duplicates(), on='id',how='inner')
+```
+
+本节将使用两种经典集成学习方法，随机森林和xgboost
+
+
+```python
+# 训练机器学习模型
+X_train, X_test, y_train, y_test = train_test_split(data.drop(['id', 'classes'], axis=1), data["classes"])
+rf_clf = RandomForestClassifier()
+rf_clf.fit(X_train, y_train)
+```
+
+
+```python
+# 模型评估
+rf_clf.score(X_test, y_test)
+```
+
+使用默认参数随机森林算法的准确率是0.74
+
+
+```python
+# 使用XGBOOST模型
+xgb_clf = xgb.XGBClassifier()
+xgb_clf.fit(X_train, y_train)
+xgb_clf.score(X_test, y_test)
+```
+
+使用默认参数随机森林算法的准确率是0.72
+
+通过上述流程，我们演示了如何在时间序列数据上使用基于机器学习的算法，这只是一个最基本的例子，如果想获得更为准备的模型，可以从特征构造和模型调参等角度进行进一步优化。
+
+
+
 ### 参考资料
 
 书籍：
@@ -2611,3 +2777,7 @@ print('count of auto-selected feature: {}'.format(len(X_selected.columns)))
 3. https://towardsdatascience.com/time-series-forecasting-using-auto-arima-in-python-bb83e49210cd
 4. https://www.machinelearningplus.com/time-series/vector-autoregression-examples-python/#6testingcausationusinggrangerscausalitytest
 5. https://towardsdatascience.com/vector-autoregressive-for-forecasting-time-series-a60e6f168c70
+
+
+
+### 
