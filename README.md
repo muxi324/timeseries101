@@ -1,11 +1,8 @@
-# timeseries101
-鉴于时间序列数据的重要性，打算写一份时间序列的纯小白入门教程，从基本概念，EDA，再到各种模型，希望通过学习完这些章节能对时间序列数据分析有一个全面的了解。
-
-本教程的框架主要基于Aileen Nielsen写的Practical Time Series Analysis这本书，结合了大量其他参考材料总结而成。
+# Time series data analysis 101
+Hands on time series data analysis for beginner  
 
 
-
-**总大纲**
+**大纲**
 
 1.概述
 
