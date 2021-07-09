@@ -2762,6 +2762,156 @@ xgb_clf.score(X_test, y_test)
 
 
 
+#### 7.2 时间序列聚类问题
+
+聚类问题（cluster）的核心是寻找相似的数据点构造有意义的组别，从而为后续分析做服务。聚类问题的一个重要的步骤是确定距离，也就是如何判断不同样本之间的相似度。
+
+对时间序列数据，一般有两大类思路：
+
+1. 基于特征计算距离
+2. 基于原始时间序列计算距离
+
+第一类方法和传统机器学习的聚类方法没有多大差别，首先像7.1章节一样利用原始的时间序列构造特征，再以特征进行聚类。
+
+针对时间序列数据，本节将对第二类思路具体展开。一个最常用的算法叫做动态时间规整dynamic time warping (DTW) ，非常适合用于形状特征很重要的时间序列数据。DTW解决的是一对多的问题，欧氏距离的计算要求两个向量是等长的，也就是要求两组时间序列的长度是一模一样才能计算，而很多情况我们得到的时间序列都不是等长的，此时DTW就能发挥作用了。
+
+下面列举两个常见的应用场景：
+
+- 声音模式识别：假设我们想追踪声音来识别说话内容，由于不同人说话的语速有快慢，这就是典型的非等长时间序列的例子，但是每个单词的声音模式是相同的，使用DTW就能很好地解决这一问题
+- 股票市场：在我们做股票预测时，股票市场由于存在巨大的波动性，导致在短期内不一定完全重合，但是从长期看很容易捕获相同的模式
+
+通过一幅图可以帮助我们理解DTW的算法本质，DTW的核心是捕获时间序列的模式或形状特征，不要求时间轴一一对应。
+
+![](img\7_2.png)
+
+DTW方法有一些基本的规则：
+
+1. 一条时间序列上的每个点都能和另一条时间序列上的某个点相匹配
+2. 一条时间序列的开始点总是和另一条时间序列的开始点相匹配（不一定是一对一）
+3. 一条时间序列的终止点总是和另一条时间序列的终止点相匹配（不一定是一对一）
+4. 两个时间序列的匹配连线不会交叉
+
+计算DTW距离的算法如下，是典型的动态规划算法。
+
+```python
+from math import sqrt
+import numpy as np
+
+ts1 = [1, 2, 3]
+ts2 = [2, 2, 2, 3, 4]
+
+def distDTW(ts1,ts2)
+    DTW = {}
+    for i in range(len(ts1)):
+        DTW[(i, -1)] = np.inf
+    for i in range(len(ts2)):
+        DTW[(-1, i)] = np.inf
+    DTW[(-1, -1)] = 0
+    
+    
+    for i in range(len(ts1)):
+        for j in range(len(ts2)):
+            dist = (ts1[i] - ts2[j]) ** 2
+            DTW[(i, j)] = dist + min(DTW[(i - 1, j)], DTW[(i, j - 1)], DTW[(i - 1, j - 1)])
+    
+    return sqrt(DTW[len(ts1) - 1, len(ts2) - 1])
+
+```
+
+除了DTW距离，还有几种其他的应用于时间序列的距离算法：
+
+1. 弗雷歇距离（Fréchet distance ）
+
+   弗雷歇距离可以理解为狗绳距离，也就是人和狗各自走过一段路所需要的最短的狗绳距离
+
+   ![](img\7_3.png)
+
+2. 最长公共子序列（Longest common subsequence ）
+
+   最长公共子序列主要用于非数值的时间序列，比如两个英文单词，最长的公共序列的长度也可以用于判断距离
+
+**python实战演练**
+
+
+
+```python
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from sklearn import preprocessing
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics.cluster import homogeneity_score
+from scipy.spatial.distance import euclidean
+from fastdtw import fastdtw
+from tqdm import tqdm
+```
+
+```python
+# 归一化数据
+data_cluster = data.drop(['id', 'classes'], axis=1)
+data_values = preprocessing.scale(data_cluster.values)
+```
+
+
+```python
+# 使用第一类聚类思路进行层次聚类
+clustering = AgglomerativeClustering(n_clusters = 5,linkage = 'ward')
+clustering.fit(data_values)
+```
+
+
+```python
+# 输出模型评估指标
+homogeneity_score(clustering.labels_, data.classes)
+```
+
+使用构造的特征进行层次聚类，同质性评估为0.43
+
+
+
+
+```python
+rowlist= np.array(range(0,50))
+for a in [np.array(range(100,150)),np.array(range(200,250)),np.array(range(300,350)),np.array(range(400,450))]:
+    rowlist=np.append(rowlist,a)
+```
+
+
+```python
+# 使用第二类聚类思路首先计算DTW距离，这一步计算量比较大，先把结果存下来，并且作为简化，只选择了部分数据送入模型
+pairwise_dis = pd.DataFrame(np.zeros((250, 250)))
+for index_r, r in tqdm(enumerate(rowlist)):
+    for index_c, c in enumerate(rowlist):
+        arr1 = eeg[eeg.id==r]['measurements'].values[:500]
+        arr2 = eeg[eeg.id==c]['measurements'].values[:500]
+        distance, _ = fastdtw(arr1, arr2, dist=euclidean)
+        pairwise_dis.iloc[index_r,index_c]=distance
+```
+
+```python
+pairwise_dis.to_csv('data/pairwise_dis.csv',index=False)
+pairwise_distance = pd.read_csv('data/pairwise_dis.csv')
+```
+
+
+```python
+# 使用第二类聚类思路进行层次聚类
+dtw_clustering = AgglomerativeClustering(linkage = 'average',n_clusters = 5, affinity = 'precomputed')
+_=dtw_clustering.fit_predict(pairwise_distance)
+```
+
+
+```python
+# 输出模型评估指标
+homogeneity_score(dtw_clustering.labels_, data[data.index.isin(rowlist)]['classes']) 
+```
+
+使用原时间序列计算DTW距离进行层次聚类，同质性评估为0.32
+
+
+
+
+
 ### 参考资料
 
 书籍：
@@ -2777,7 +2927,7 @@ xgb_clf.score(X_test, y_test)
 3. https://towardsdatascience.com/time-series-forecasting-using-auto-arima-in-python-bb83e49210cd
 4. https://www.machinelearningplus.com/time-series/vector-autoregression-examples-python/#6testingcausationusinggrangerscausalitytest
 5. https://towardsdatascience.com/vector-autoregressive-for-forecasting-time-series-a60e6f168c70
+6. https://towardsdatascience.com/dynamic-time-warping-3933f25fcdd
 
 
 
-### 

@@ -1,8 +1,11 @@
 # timeseries101
-Hands on time series data analysis for beginner  
+鉴于时间序列数据的重要性，打算写一份时间序列的纯小白入门教程，从基本概念，EDA，再到各种模型，希望通过学习完这些章节能对时间序列数据分析有一个全面的了解。
+
+本教程的框架主要基于Aileen Nielsen写的Practical Time Series Analysis这本书，结合了大量其他参考材料总结而成。
 
 
-**大纲**
+
+**总大纲**
 
 1.概述
 
@@ -14,8 +17,10 @@ Hands on time series data analysis for beginner
 
 5.基于状态空间模型的时间序列分析方法
 
-6.基于机器学习的时间序列分析方法
+6.特征生成和特征选择
 
-7.基于深度学习的时间序列分析方法
+7.基于机器学习的时间序列分析方法
 
-8.模型优化的考虑
+8.基于深度学习的时间序列分析方法
+
+9.模型优化的考虑
