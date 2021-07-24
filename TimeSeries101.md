@@ -2912,12 +2912,492 @@ homogeneity_score(dtw_clustering.labels_, data[data.index.isin(rowlist)]['classe
 
 
 
+### 8. 基于深度学习的时间序列分析方法
+
+深度学习在时间序列的应用是一个相对新的尝试，但已经展现出了惊人的前景。深度学习使得构建超复杂的非线性模型变得可能。
+
+深度学习有着以下优势：
+
+- 不用遵循平稳性假设
+- 不用研究选择参数的技巧，如ARIMA中的order
+- 不用事先对数据背后的动力学作假设
+
+但是深度学习也不是永远都是灵丹妙药，有一些使用的限制
+
+- 在趋势性的数据集上效果不是很好
+- 深度学习在数据值介于[-1,1]时效果最好，因此需要预处理
+- 模型调参上的理论研究不如传统方法丰富
+
+总之深度学习是一个极为复杂的技术，对于初学者来说，你可能会发现使用深度学习构建的模型效果并不如简单的统计学模型，随着经验逐渐丰富，深度学习在中高级使用者手上绝对是处理时间序列数据的一大利器。
+
+本章会选择时间序列模型的经典模型展开，以代码为核心介绍深度学习在时间序列上的应用，假定读者已经有了初步的神经网络基础和pytorch基础。
+
+#### 8.1 LSTM长短期记忆网络
+
+LSTM是RNN（循环神经网络）的衍生，LSTM的提出是为了解决RNN无法适用于长序列的不足，梯度消失或梯度爆炸的现象会导致RNN应用于长时间序列上无法收敛。
+
+LSTM的改进是在RNN的基础上修改了重复单元部分，下图是LSTM的网络结构，每个重复单元都由多个门共同控制，从左至右分别是
+
+- forget gate layer，决定哪些信息要选择性遗忘
+- input gate layer，决定要更新哪些信息
+- tanh layer，决定要如何更新信息
+- output layer，决定如何输入信息
+
+![](img\8_1.png)
+
+
+
+关于LSTM更详细的介绍，可以参考这篇文章，将概念讲的很清楚。
+
+[http://colah.github.io/posts/2015-08-Understanding-LSTMs/](http://colah.github.io/posts/2015-08-Understanding-LSTMs/)
+
+下面直接进入代码实战部分，LSTM的实现会包括两种方式，使用pytorch搭建（需要自己构建神经网络结构，灵活性强，但同时要写更多代码量）和使用第三方库实现（直接调包，代码量少，虽然Darts包已经将LSTM封装好可以直接使用，但仍然建议使用者对LSTM的原理有一定了解后再尝试，否则不知道怎么调参）
+
+##### 8.1.1 使用Pytorch搭建
+
+
+```python
+import torch
+import torch.nn as nn
+
+from sklearn.preprocessing import MinMaxScaler
+import time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
+```
+
+**数据导入和准备**
+
+
+```python
+# 导入酒精销售数据
+df = pd.read_csv('data\Alcohol_Sales.csv',index_col=0,parse_dates=True)
+len(df)
+```
+
+
+```python
+df.head()  # 观察数据集，这是一个单变量时间序列
+```
+
+
+```python
+plt.figure(figsize=(12,4))
+plt.grid(True)
+plt.plot(df['S4248SM144NCEN'])
+plt.show()
+```
+
+
+![png](img\8_2.png)
+    
+
+```python
+y = df['S4248SM144NCEN'].values.astype(float)
+
+test_size = 12
+
+# 划分训练和测试集，最后12个值作为测试集
+train_set = y[:-test_size]
+test_set = y[-test_size:]
+```
+
+
+
+
+```python
+# 归一化至[-1,1]区间，为了获得更好的训练效果
+scaler = MinMaxScaler(feature_range=(-1, 1))
+train_norm = scaler.fit_transform(train_set.reshape(-1, 1))
+```
+
+**创建时间序列训练集**
+
+
+```python
+# 转换成 tensor
+train_norm = torch.FloatTensor(train_norm).view(-1)
+
+# 定义时间窗口，注意和前面的test size不是一个概念
+window_size = 12
+
+# 这个函数的目的是为了从原时间序列中抽取出训练样本，也就是用第一个值到第十二个值作为X输入，预测第十三个值作为y输出，这是一个用于训练的数据点，时间窗口向后滑动以此类推
+def input_data(seq,ws):  
+    out = []
+    L = len(seq)
+    for i in range(L-ws):
+        window = seq[i:i+ws]
+        label = seq[i+ws:i+ws+1]
+        out.append((window,label))
+    return out
+
+
+train_data = input_data(train_norm,window_size)
+len(train_data)  # 等于325（原始数据集长度）-12（测试集长度）-12（时间窗口） 
+```
+
+
+
+
+```python
+# 观察某一个数据点
+train_data[0]
+```
+
+
+    (tensor([-0.9268, -0.9270, -0.8340, -0.7379, -0.7966, -0.7439, -0.7547, -0.8109,
+             -0.8128, -0.7901, -0.7933, -0.6743]),
+     tensor([-1.]))
+
+
+
+**定义模型**
+
+
+```python
+class LSTMnetwork(nn.Module):
+    def __init__(self,input_size=1,hidden_size=100,output_size=1):
+        super().__init__()
+        self.hidden_size = hidden_size
+        
+        # 定义LSTM层
+        self.lstm = nn.LSTM(input_size,hidden_size)
+        
+        # 定义全连接层
+        self.linear = nn.Linear(hidden_size,output_size)
+        
+        # 初始化h0，c0
+        self.hidden = (torch.zeros(1,1,self.hidden_size),
+                       torch.zeros(1,1,self.hidden_size))
+
+    def forward(self,seq):
+        # 前向传播的过程是输入->LSTM层->全连接层->输出
+        
+        # https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=lstm#torch.nn.LSTM
+        # 在观察查看LSTM输入的维度，LSTM的第一个输入input_size维度是(L, N, H_in), L是序列长度，N是batch size，H_in是输入尺寸，也就是变量个数
+        # LSTM的第二个输入是一个元组，包含了h0,c0两个元素，这两个元素的维度都是（D∗num_layers,N,H_out)，D=1表示单向网络，num_layers表示多少个LSTM层叠加，N是batch size，H_out表示隐层神经元个数
+        lstm_out, self.hidden = self.lstm(seq.view(len(seq),1,-1), self.hidden)
+        
+        pred = self.linear(lstm_out.view(len(seq),-1)) 
+        return pred[-1]  # 输出只用取最后一个值
+```
+
+**定义损失函数和优化函数**
+
+
+```python
+torch.manual_seed(101)
+model = LSTMnetwork()
+
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+```
+
+
+```python
+# 看下这个网络结构总共有多少个参数
+def count_parameters(model):
+    params = [p.numel() for p in model.parameters() if p.requires_grad]
+    for item in params:
+        print(f'{item:>6}')
+    print(f'______\n{sum(params):>6}')
+    
+count_parameters(model)
+```
+
+       400
+     40000
+       400
+       400
+       100
+         1
+    ______
+     41301
+
+
+**训练模型**
+
+
+```python
+epochs = 100
+
+start_time = time.time()
+
+for epoch in range(epochs):
+    
+    for seq, y_train in train_data:
+        
+        # 每次更新参数前都梯度归零和初始化
+        optimizer.zero_grad()
+        model.hidden = (torch.zeros(1,1,model.hidden_size),
+                        torch.zeros(1,1,model.hidden_size))
+        
+        y_pred = model(seq)
+        
+        loss = criterion(y_pred, y_train)
+        loss.backward()
+        optimizer.step()
+        
+    print(f'Epoch: {epoch+1:2} Loss: {loss.item():10.8f}')
+    
+print(f'\nDuration: {time.time() - start_time:.0f} seconds')
+```
+
+
+
+
+**模型预测和评估**
+
+
+```python
+future = 12
+
+# 选取序列最后12个值开始预测
+preds = train_norm[-window_size:].tolist()
+
+# 设置成eval模式
+model.eval()
+
+# 循环的每一步表示向时间序列向后滑动一格
+for i in range(future):
+    seq = torch.FloatTensor(preds[-window_size:])
+    with torch.no_grad():
+        model.hidden = (torch.zeros(1,1,model.hidden_size),
+                        torch.zeros(1,1,model.hidden_size))
+        preds.append(model(seq).item())
+```
+
+
+```python
+# 逆归一化还原真实值
+true_predictions = scaler.inverse_transform(np.array(preds[window_size:]).reshape(-1, 1))
+```
+
+
+```python
+# 对比真实值和预测值
+plt.figure(figsize=(12,4))
+plt.grid(True)
+plt.plot(df['S4248SM144NCEN'])
+x = np.arange('2018-02-01', '2019-02-01', dtype='datetime64[M]').astype('datetime64[D]')
+plt.plot(x,true_predictions)
+plt.show()
+```
+
+
+![png](img\8_3.png)
+    
+
+```python
+# 放大看
+fig = plt.figure(figsize=(12,4))
+plt.grid(True)
+fig.autofmt_xdate()
+
+plt.plot(df['S4248SM144NCEN']['2017-01-01':])
+plt.plot(x,true_predictions)
+plt.show()
+```
+
+
+![png](img\8_4.png)
+    
+
+
+**预测未来的时间序列值**
+
+
+```python
+# 重新开始训练
+epochs = 100
+
+# 切回到训练模式
+model.train()
+
+y_norm = scaler.fit_transform(y.reshape(-1, 1))
+y_norm = torch.FloatTensor(y_norm).view(-1)
+all_data = input_data(y_norm,window_size)
+
+
+start_time = time.time()
+
+for epoch in range(epochs):
+    
+    for seq, y_train in all_data:  
+        
+        optimizer.zero_grad()
+        model.hidden = (torch.zeros(1,1,model.hidden_size),
+                        torch.zeros(1,1,model.hidden_size))
+        
+        y_pred = model(seq)
+        
+        loss = criterion(y_pred, y_train)
+        loss.backward()
+        optimizer.step()
+        
+    print(f'Epoch: {epoch+1:2} Loss: {loss.item():10.8f}')
+    
+print(f'\nDuration: {time.time() - start_time:.0f} seconds')
+```
+
+
+
+```python
+# 重新预测
+window_size = 12
+future = 12
+L = len(y)
+
+preds = y_norm[-window_size:].tolist()
+
+model.eval()
+for i in range(future):  
+    seq = torch.FloatTensor(preds[-window_size:])
+    with torch.no_grad():
+
+        model.hidden = (torch.zeros(1,1,model.hidden_size),
+                        torch.zeros(1,1,model.hidden_size))  
+        preds.append(model(seq).item())
+
+
+true_predictions = scaler.inverse_transform(np.array(preds).reshape(-1, 1))
+
+
+x = np.arange('2019-02-01', '2020-02-01', dtype='datetime64[M]').astype('datetime64[D]')
+
+plt.figure(figsize=(12,4))
+plt.grid(True)
+plt.plot(df['S4248SM144NCEN'])
+plt.plot(x,true_predictions[window_size:])
+plt.show()
+```
+
+
+![png](img\8_5.png)
+    
+
+
+
+```python
+fig = plt.figure(figsize=(12,4))
+plt.grid(True)
+fig.autofmt_xdate()
+plt.plot(df['S4248SM144NCEN']['2017-01-01':])
+plt.plot(x,true_predictions[window_size:])
+plt.show()
+```
+
+
+![png](img\8_6.png)
+    
+
+
+##### 8.1.2 使用Darts调用
+
+
+```python
+from darts import TimeSeries
+from darts.dataprocessing.transformers import Scaler
+from darts.models import RNNModel
+from darts.metrics import mape
+from darts.utils.timeseries_generation import datetime_attribute_timeseries
+import warnings
+warnings.filterwarnings("ignore")
+import logging
+logging.disable(logging.CRITICAL)
+```
+
+
+```python
+df = pd.read_csv('data\Alcohol_Sales.csv')
+```
+
+
+```python
+series = TimeSeries.from_dataframe(df, 'DATE', 'S4248SM144NCEN')
+```
+
+
+```python
+# 划分训练集和测试集
+train, val = series.split_after(pd.Timestamp('20170101'))
+
+transformer = Scaler()
+train_transformed = transformer.fit_transform(train)
+val_transformed = transformer.transform(val)
+series_transformed = transformer.transform(series)
+
+# 创建年和月的协变量序列
+year_series = datetime_attribute_timeseries(pd.date_range(start=series.start_time(), freq=series.freq_str, periods=400),
+                                             attribute='year', one_hot=False)
+year_series = Scaler().fit_transform(year_series)
+month_series = datetime_attribute_timeseries(year_series, attribute='month', one_hot=True)
+covariates = year_series.stack(month_series)
+cov_train, cov_val = covariates.split_after(pd.Timestamp('20170101'))
+```
+
+
+```python
+my_model = RNNModel(
+    model='LSTM',
+    hidden_dim=100,
+    dropout=0,
+    batch_size=1,
+    n_epochs=100,
+    optimizer_kwargs={'lr': 1e-3},
+    model_name='Alcohol_RNN',
+    log_tensorboard=True,
+    random_state=42,
+    training_length=12,
+    input_chunk_length=12,
+    force_reset=True
+)
+```
+
+
+```python
+my_model.fit(train_transformed, covariates=cov_train, val_series=val_transformed, val_covariates=cov_val, verbose=True)
+```
+
+
+
+
+```python
+def eval_model(model, lag):
+    pred_series = model.predict(n=24,covariates=covariates)
+    plt.figure(figsize=(8,5))
+    series_transformed[-lag:].plot(label='actual')
+    pred_series.plot(label='forecast')
+    plt.title('MAPE: {:.2f}%'.format(mape(pred_series, val_transformed)))
+    plt.legend();
+
+eval_model(my_model,0)
+eval_model(my_model,30)
+```
+
+
+![png](img\8_7.png)
+    
+
+
+![png](img\8_8.png)
+    
+
+
+
+
+
 ### 参考资料
 
 书籍：
 
 1. https://www.oreilly.com/library/view/practical-time-series/9781492041641/
-
 2. https://machinelearningmastery.com/introduction-to-time-series-forecasting-with-python/
 
 网站：
@@ -2928,6 +3408,4 @@ homogeneity_score(dtw_clustering.labels_, data[data.index.isin(rowlist)]['classe
 4. https://www.machinelearningplus.com/time-series/vector-autoregression-examples-python/#6testingcausationusinggrangerscausalitytest
 5. https://towardsdatascience.com/vector-autoregressive-for-forecasting-time-series-a60e6f168c70
 6. https://towardsdatascience.com/dynamic-time-warping-3933f25fcdd
-
-
-
+7. http://colah.github.io/posts/2015-08-Understanding-LSTMs/
