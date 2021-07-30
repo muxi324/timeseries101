@@ -3601,7 +3601,85 @@ TRAIN: [0 1 2 3 4] TEST: [5]
 
   模型输出的分布情况应当和你预期的分布接近。例如一个预测股价的场景，从经验上看股价向上或向下的频率是接近的，如果你的模型总是预测股价向上，就有偏差了。
 
-  
+- 画出模型随时间变化的残差
+
+  如果残差随时间变化也存在明显的变化，这暗示着有某些参数未被指定，导致模型没有充分拟合数据。
+
+- 将模型效果和零模型比较
+
+  零模型（null model）可以认为是基准模型，一个最常见的零模型是时间t的值等于时间t-1的值。如果你的模型甚至比这样一个简单的模型差，那就完全没有应用价值，你应该从模型选择，损失函数，预处理等方面来考虑而不是花时间进行超参数的网格探索。
+
+- 研究你的模型如何处理异常值
+
+  在很多行业，离群值就是字面意思的异常情况，是无法预测的，因此一个好的模型应该是忽略这些异常值而不是去拟合它们。如果模型对离群值拟合很好，可能就是过拟合了。
+
+- 进行时间敏感性分析
+  你需要考虑的是时间序列中的定性相似行为是否会在你的模型中产生相似的结果，也就是我们应当假定模型处理相似的时间模式特征时，会采取相似的做法。例如，如果一个时间序列趋势向上，每天漂移 3 个单位，另一个呈上升趋势，每天漂移 2.9 个单位，你可能希望模型给出的预测也会呈现出类似的规律。
+
+
+
+##### 9.1.3 如何估计不确定性
+
+传统统计学方法的一个优势是模型参数可以得到不确定性估计。对于不确定性，我们还可以借助计算模拟方法理解预测模型中的不确定性，即使是非统计学方法也可以用计算模拟方法来分析。
+
+一个经典的计算模拟方法是蒙特卡洛方法，其原理是通过大量随机重复试验，去了解一个系统，进而得到所要计算的值的估计。
+
+假设我们在分析一个AR(1)序列，在已知参数为0.7的情况下模拟生成一个序列，观察模型拟合得到的估计值，重复1000次。
+
+```python
+ar = np.array([1,0.7])  
+ma = np.array([1]) 
+AR_object = ArmaProcess(ar, ma)
+
+# 蒙特卡洛试验重复1000次
+estimate = np.zeros(1000)
+
+def MonteCarlo():
+    # 生成一个1000
+    simulated_data = AR_object.generate_sample(nsample=1000)
+    mod = ARMA(simulated_data, order=(1, 0))  
+    res = mod.fit()
+    return -1*res.params[1]
+
+for i in range(1000):
+    estimate[i] = MonteCarlo()
+    
+plt.hist(estimate,bins=20,edgecolor='lightblue');
+```
+
+通过画出直方图可以帮助我们理解参数的估计值分布情况。
+
+![](img\9_1.png)
+
+
+
+下面这个例子帮助我们理解用错误的参数拟合时间序列，参数是如何偏离的。
+
+```python
+# 这次是构建一个AR(2)序列，但是用AR(1)去拟合
+ar = np.array([1,0.7, -0.2])  
+ma = np.array([1]) 
+AR_object = ArmaProcess(ar, ma)
+
+# 蒙特卡洛试验重复1000次
+estimate = np.zeros(1000)
+
+def MonteCarlo():
+    # 生成一个1000
+    simulated_data = AR_object.generate_sample(nsample=1000)
+    mod = ARMA(simulated_data, order=(1, 0))  
+    res = mod.fit()
+    return -1*res.params[1]
+
+for i in range(1000):
+    estimate[i] = MonteCarlo()
+
+plt.hist(estimate,bins=20,edgecolor='lightblue');
+```
+
+![](img\9_2.png)
+
+
 
 
 
